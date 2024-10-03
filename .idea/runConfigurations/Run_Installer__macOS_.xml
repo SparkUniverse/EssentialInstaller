@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run Installer (macOS)" type="Application" factoryName="Application">
+    <option name="ALTERNATIVE_JRE_PATH" value="Kotlin SDK" />
+    <option name="MAIN_CLASS_NAME" value="gg.essential.installer.MainKt" />
+    <module name="installer.main" />
+    <option name="VM_PARAMETERS" value="-XstartOnFirstThread -Dui.scaleFactor=1 -Dinstaller.debug=true -Delementa.dev=true" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

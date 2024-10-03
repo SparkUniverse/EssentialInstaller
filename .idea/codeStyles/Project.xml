@@ -1,0 +1,48 @@
+<component name="ProjectCodeStyleConfiguration">
+  <code_scheme name="Project" version="173">
+    <option name="RIGHT_MARGIN" value="200" />
+    <option name="SOFT_MARGINS" value="180" />
+    <JavaCodeStyleSettings>
+      <option name="CLASS_COUNT_TO_USE_IMPORT_ON_DEMAND" value="999" />
+      <option name="NAMES_COUNT_TO_USE_IMPORT_ON_DEMAND" value="999" />
+    </JavaCodeStyleSettings>
+    <JetCodeStyleSettings>
+      <option name="PACKAGES_TO_USE_STAR_IMPORTS">
+        <value>
+          <package name="java.util" alias="false" withSubpackages="false" />
+          <package name="gg.essential.installer.gui.component" alias="false" withSubpackages="true" />
+          <package name="gg.essential.installer.gui" alias="false" withSubpackages="true" />
+          <package name="gg.essential.gui.wardrobe.configuration" alias="false" withSubpackages="true" />
+          <package name="kotlin.collections" alias="false" withSubpackages="true" />
+          <package name="gg.essential.network.connectionmanager.cosmetics" alias="false" withSubpackages="true" />
+          <package name="gg.essential.gui.about.components" alias="false" withSubpackages="true" />
+          <package name="gg.essential.gui.elementa.essentialmarkdown" alias="false" withSubpackages="true" />
+          <package name="gg.essential.gui.elementa.state.v2" alias="false" withSubpackages="true" />
+          <package name="gg.essential.gui.layoutdsl" alias="false" withSubpackages="true" />
+          <package name="gg.essential.elementa.dsl" alias="false" withSubpackages="true" />
+          <package name="gg.essential.elementa.constraints" alias="false" withSubpackages="true" />
+          <package name="gg.essential.util" alias="false" withSubpackages="true" />
+          <package name="kotlinx.android.synthetic" alias="false" withSubpackages="true" />
+          <package name="kotlin.collections" alias="false" withSubpackages="true" />
+          <package name="gg.essential.elementa.layoutdsl" alias="false" withSubpackages="true" />
+          <package name="io.ktor" alias="false" withSubpackages="true" />
+        </value>
+      </option>
+      <option name="NAME_COUNT_TO_USE_STAR_IMPORT" value="2147483647" />
+      <option name="NAME_COUNT_TO_USE_STAR_IMPORT_FOR_MEMBERS" value="1" />
+      <option name="BLANK_LINES_BEFORE_DECLARATION_WITH_COMMENT_OR_ANNOTATION_ON_SEPARATE_LINE" value="0" />
+      <option name="CODE_STYLE_DEFAULTS" value="KOTLIN_OFFICIAL" />
+    </JetCodeStyleSettings>
+    <Properties>
+      <option name="KEEP_BLANK_LINES" value="true" />
+    </Properties>
+    <codeStyleSettings language="JSON">
+      <indentOptions>
+        <option name="INDENT_SIZE" value="4" />
+      </indentOptions>
+    </codeStyleSettings>
+    <codeStyleSettings language="kotlin">
+      <option name="CODE_STYLE_DEFAULTS" value="KOTLIN_OFFICIAL" />
+    </codeStyleSettings>
+  </code_scheme>
+</component>

@@ -1,0 +1,25 @@
+{
+    "modVersionProviderStrategy": "COMBINE_WITH_PRIORITY",
+    "modMetadataProviderStrategy": "COMBINE_WITH_PRIORITY",
+    "modloaderMetadataProviderStrategy": "COMBINE_WITH_PRIORITY",
+    "installerMetadataProviders": [
+        {
+            "type": "file",
+            "path": "/installer-metadata.json"
+        }
+    ],
+    "modVersionProviders": [
+        {
+            "type": "url",
+            "versionURL": "https://api.essential.gg/v2/platforms",
+            "downloadInfoURL": "https://api.essential.gg/mods/v1/essential:essential-pinned/versions/stable/platforms/{modloader}_{mc-version-dashed}/download"
+        }
+    ],
+    "modMetadataProviders": [
+        {
+            "type": "file",
+            "path": "/mod-metadata.json"
+        }
+    ],
+    "modloaderMetadataProviders": []
+}

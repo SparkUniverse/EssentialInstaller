@@ -1,0 +1,36 @@
+package gg.essential.installer.util
+
+import gg.essential.installer.logging.Logging.logger
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import java.time.Instant
+
+object InstantAsIso8601Serializer : KSerializer<Instant> {
+    private val inner = String.serializer()
+    override val descriptor = inner.descriptor
+
+    override fun serialize(encoder: Encoder, value: Instant) =
+        encoder.encodeSerializableValue(inner, value.toString())
+
+    override fun deserialize(decoder: Decoder): Instant {
+        val value = decoder.decodeSerializableValue(inner)
+        try {
+            return Instant.parse(value)
+        } catch (e: Exception) {
+            // CurseForge uses '0001-01-01T00:00:00', so we hardcode this to silence the error below
+            if (value == "0001-01-01T00:00:00") {
+                return Instant.MIN
+            }
+            // Try removing an invalid timezone suffix. '2022-09-10T12:11:53+0200' was found in the wild, for example
+            try {
+                return Instant.parse(value.split('+').first())
+            } catch (e: Exception) {
+                // If nothing works fail silently as this isn't used for anything mission-critical
+                logger.warn("Error parsing Instant '$value'", e)
+                return Instant.MIN
+            }
+        }
+    }
+}

@@ -1,0 +1,87 @@
+name: Build workflow
+
+on:
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-installer:
+    name: Compile Installer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Build with Gradle
+        run: ./gradlew build
+        working-directory: installer
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Installer JAR
+          path: installer/build/libs/installer.jar
+  build-macos:
+    name: Package macOS app
+    runs-on: macos-latest
+    needs: build-installer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Installer JAR
+          path: wrapper/resources
+      - name: Setup stable toolchain
+        run: rustup toolchain install stable --profile minimal --no-self-update
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: wrapper
+      - name: Add x86_64 target
+        run: rustup target add x86_64-apple-darwin
+        working-directory: wrapper
+      - name: Build x86_64
+        run: cargo build --release --target x86_64-apple-darwin
+        working-directory: wrapper
+      - name: Build aarch64
+        run: cargo build --release --target aarch64-apple-darwin
+        working-directory: wrapper
+      - name: Create .app
+        run: ./make-macos-app.sh
+        working-directory: scripts
+      - name: 'Upload App'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macOS Installer (Unsigned)
+          path: wrapper/target/universal-apple-darwin/release/*.app.zip
+  build-windows:
+    name: Package Windows executable
+    runs-on: windows-latest
+    needs: build-installer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Installer JAR
+          path: wrapper/resources
+      - name: Setup stable toolchain
+        run: rustup toolchain install stable --profile minimal --no-self-update
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: wrapper
+      - name: Build
+        run: cargo build --release --target x86_64-pc-windows-msvc
+        working-directory: wrapper
+      - name: 'Upload Executable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows Installer (Unsigned)
+          path: wrapper/target/x86_64-pc-windows-msvc/release/*.exe
+

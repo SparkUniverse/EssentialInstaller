@@ -1,0 +1,11 @@
+name: Build
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+
+jobs:
+  build:
+    name: "Build"
+    uses: ./.github/workflows/build-workflow.yml

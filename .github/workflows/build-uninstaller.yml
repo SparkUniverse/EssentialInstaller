@@ -1,0 +1,95 @@
+name: Build old installer uninstaller
+
+on: workflow_dispatch
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-windows:
+    name: Package Windows executable
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup stable toolchain
+        run: rustup toolchain install stable --profile minimal --no-self-update
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: uninstaller
+      - name: Build
+        run: cargo build --release --target x86_64-pc-windows-msvc
+        working-directory: uninstaller
+      - name: 'Upload Executable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows Old Installer Uninstaller (Unsigned)
+          path: uninstaller/target/x86_64-pc-windows-msvc/release/*.exe
+  sign-windows:
+    name: Sign Windows executable
+    runs-on: windows-latest
+    needs: build-windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Temp Directory
+        run: mkdir dist
+        shell: cmd
+      - uses: actions/download-artifact@v4
+        with:
+          name: Windows Old Installer Uninstaller (Unsigned)
+          path: dist
+      - name: List
+        run: |
+          dir
+          echo %cd%
+        shell: cmd
+        working-directory: dist
+
+      - name: Setup Certificate
+        run: |
+          echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
+        shell: bash
+
+      - name: Set variables
+        id: variables
+        run: |
+          dir
+          echo "::set-output name=version::${GITHUB_REF#refs/tags/v}"
+          echo "::set-output name=KEYPAIR_NAME::gt-standard-keypair"
+          echo "::set-output name=CERTIFICATE_NAME::gt-certificate"
+          echo "SM_HOST=${{ secrets.SM_HOST }}" >> "$GITHUB_ENV"
+          echo "SM_API_KEY=${{ secrets.SM_API_KEY }}" >> "$GITHUB_ENV"
+          echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_ENV"
+          echo "SM_CLIENT_CERT_PASSWORD=${{ secrets.SM_CLIENT_CERT_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH
+          echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH
+          echo "C:\Program Files\DigiCert\DigiCert Keylocker Tools" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Setup Keylocker KSP on windows
+        run: |
+          curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/Keylockertools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o Keylockertools-windows-x64.msi
+          msiexec /i Keylockertools-windows-x64.msi /quiet /qn
+          smksp_registrar.exe list
+          smctl.exe keypair ls
+          C:\Windows\System32\certutil.exe -csp "DigiCert Signing Manager KSP" -key -user
+        shell: cmd
+
+      - name: Certificates Sync
+        run: |
+          smctl windows certsync
+        shell: cmd
+
+      - name: Signing using Signtool
+        run: |
+          signtool.exe sign /sha1 ${{ secrets.SM_CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 uninstaller.exe
+          signtool.exe verify /v /pa uninstaller.exe
+        working-directory: dist
+
+      - name: 'Upload Signed Executable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows Old Installer Uninstaller
+          path: dist/*.exe
+
