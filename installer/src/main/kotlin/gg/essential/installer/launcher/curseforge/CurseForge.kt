@@ -251,7 +251,7 @@ class CurseForge(
                             return@withContext Result.failure(LauncherNotFoundException())
                         }
                         if (!Advapi32Util.registryValueExists(WinReg.HKEY_CURRENT_USER, "SOFTWARE\\Overwolf\\CurseForge", "minecraft_root")) {
-                            return@withContext Result.failure(LauncherNotFoundException())
+                            return@withContext Result.failure(LauncherNotConfiguredException(LauncherType.CURSEFORGE))
                         }
                         Result.success(CurseForge(
                             Advapi32Util.registryGetStringValue(
