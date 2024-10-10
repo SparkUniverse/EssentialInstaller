@@ -1,6 +1,5 @@
 package gg.essential.installer.launcher.vanilla
 
-import com.sun.jna.platform.win32.Advapi32Util
 import com.sun.jna.platform.win32.WinReg
 import gg.essential.elementa.state.v2.combinators.map
 import gg.essential.elementa.state.v2.mutableStateOf
@@ -69,8 +68,13 @@ class MinecraftLauncher(
     private var profilesFileJsonObject = JsonObject(emptyMap())
 
     override val installations = profilesFile.map { profilesFile ->
-        profilesFile.profiles.entries.map {
-            MinecraftInstallation(it.key, this, it.value)
+        profilesFile.profiles.entries.mapNotNull {
+            try {
+                MinecraftInstallation(it.key, this, it.value)
+            } catch (e: Exception) {
+                logger.warn("Error when parsing ${it.key}: ${it.value}!", e)
+                null
+            }
         }.filter {
             it.data.type != "latest-release" && it.data.type != "latest-snapshot"
         }
