@@ -2,7 +2,7 @@ use crate::app;
 use crate::app::AppMessage;
 use crate::java::get_java_zip_path_from_cache_dir;
 use app::AppState;
-use log::info;
+use log::{info, warn};
 use std::path::PathBuf;
 use std::{fs, fs::File, io::Write};
 
@@ -24,6 +24,7 @@ pub enum State {
 pub async fn download_java(state: State) -> (AppMessage, State) {
     match state {
         State::Ready(url, cache_dir) => {
+            info!("Starting download from {}", url);
             let download_path = get_java_zip_path_from_cache_dir(&cache_dir);
             info!("Temporary jre zip file: {}", download_path.display());
 
@@ -56,10 +57,24 @@ pub async fn download_java(state: State) -> (AppMessage, State) {
 
             let response = reqwest::get(&url).await;
 
-            info!("Got response");
-
             match response {
                 Ok(response) => {
+                    info!("Got response {}", response.status());
+
+                    if !response.status().is_success() {
+                        warn!("Non-OK status received as response when downloading!");
+                        warn!(
+                            "Response text: \n{}",
+                            response.text().await.unwrap_or_else(|e| { e.to_string() })
+                        );
+                        return (
+                            AppMessage::UpdateState(AppState::Errored(
+                                "Non-OK status received as response when downloading!".to_string(),
+                            )),
+                            State::Error,
+                        );
+                    }
+
                     if let Some(total) = response.content_length() {
                         (
                             AppMessage::UpdateState(AppState::Downloading(url.clone(), 0f32)),
@@ -76,19 +91,22 @@ pub async fn download_java(state: State) -> (AppMessage, State) {
                     } else {
                         (
                             AppMessage::UpdateState(AppState::Errored(
-                                "Error when downloading!".to_string(),
+                                "Error when downloading! (No content length received)".to_string(),
                             )),
                             State::Error,
                         )
                     }
                 }
-                Err(e) => (
-                    AppMessage::UpdateState(AppState::Errored(format!(
-                        "Error when starting download: {}",
-                        e
-                    ))),
-                    State::Error,
-                ),
+                Err(e) => {
+                    warn!("Error in response: {}", e);
+                    (
+                        AppMessage::UpdateState(AppState::Errored(format!(
+                            "Error when starting download: {}",
+                            e
+                        ))),
+                        State::Error,
+                    )
+                }
             }
         }
         State::Downloading {
