@@ -63,8 +63,17 @@ class PrismLauncher(
         get() = installationsMutable
 
     override suspend fun loadInstallations() {
-        withContext(Dispatchers.IO) {
-            val map = readConfigFileToMap(launcherPath / "prismlauncher.cfg")
+        loadLauncherConfig()
+    }
+
+    suspend fun loadLauncherConfig(): Boolean {
+        return withContext(Dispatchers.IO) {
+            val launcherConfigFile = launcherPath / "prismlauncher.cfg"
+            if (Files.notExists(launcherConfigFile)) {
+                logger.warn("Config file at $launcherConfigFile could not be found!");
+                return@withContext false
+            }
+            val map = readConfigFileToMap(launcherConfigFile)
 
             instancesFolder = launcherPath / (map["InstanceDir"] ?: "instances")
             iconsFolder = launcherPath / (map["IconsDir"] ?: "icons")
@@ -96,6 +105,7 @@ class PrismLauncher(
                 }
             }
             installationsMutable.setAll(installations)
+            return@withContext true
         }
 
     }
@@ -268,15 +278,19 @@ class PrismLauncher(
             val platform = Platform.current()
             if (platform is Platform.Windows) {
                 if (!Advapi32Util.registryKeyExists(WinReg.HKEY_CURRENT_USER, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\PrismLauncher")) {
-                     return Result.failure(LauncherNotFoundException())
-                    }
+                    return Result.failure(LauncherNotFoundException())
+                }
             }
 
             val prismLauncherFolder = platform.applicationDataFolder / "PrismLauncher"
             if (!prismLauncherFolder.isDirectorySafe()) {
                 return Result.failure(LauncherNotFoundException())
             }
-            return Result.success(PrismLauncher(prismLauncherFolder))
+            val prismLauncher = PrismLauncher(prismLauncherFolder)
+            if (!prismLauncher.loadLauncherConfig()) {
+                return Result.failure(LauncherNotConfiguredException(LauncherType.PRISM))
+            }
+            return Result.success(prismLauncher)
         }
     }
 }
