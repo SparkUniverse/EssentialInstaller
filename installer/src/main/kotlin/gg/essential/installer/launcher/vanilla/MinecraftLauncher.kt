@@ -178,9 +178,14 @@ class MinecraftLauncher(
                 for (name in toCopy) {
                     val originalPath = launcherPath / name
                     val newPath = newInstallInfo.gameFolder / name
-                    if (Files.exists(originalPath)) {
-                        Files.copy(originalPath, newPath)
-                        logger.debug("Copied {} to {}", originalPath, newPath)
+                    try {
+                        if (Files.exists(originalPath) && Files.notExists(newPath)) {
+                            Files.copy(originalPath, newPath)
+                            logger.debug("Copied {} to {}", originalPath, newPath)
+                        }
+                    } catch (e: Exception) {
+                        // Catch exceptions when copying files, as these aren't game-breaking if they error.
+                        logger.warn("Error when copying $originalPath to $newPath!", e)
                     }
                 }
             },
@@ -236,8 +241,15 @@ class MinecraftLauncher(
                 for (name in toCopy) {
                     val originalPath = editInstallInfo.oldGameFolder / name
                     val newPath = editInstallInfo.gameFolder / name
-                    Files.copy(originalPath, newPath)
-                    logger.debug("Copied {} to {}", originalPath, newPath)
+                    try {
+                        if (Files.exists(originalPath) && Files.notExists(newPath)) {
+                            Files.copy(originalPath, newPath)
+                            logger.debug("Copied {} to {}", originalPath, newPath)
+                        }
+                    } catch (e: Exception) {
+                        // Catch exceptions when copying files, as these aren't game-breaking if they error.
+                        logger.warn("Error when copying $originalPath to $newPath!", e)
+                    }
                 }
             },
         )
