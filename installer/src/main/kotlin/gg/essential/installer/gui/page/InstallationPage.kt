@@ -130,7 +130,7 @@ class InstallationPage<I : Installation, NI : InstallInfo.New, EI : InstallInfo.
         }
     }
 
-    private val validCharactersPattern = Pattern.compile("^[\\w -.()\\[\\]]+$")
+    private val validCharactersPattern = Pattern.compile("^[\\w \\-.()\\[\\]]+$")
 
     private val textInputErrorMessageState = textInput.textState.toV2().map {
         if (it.isBlank()) {
