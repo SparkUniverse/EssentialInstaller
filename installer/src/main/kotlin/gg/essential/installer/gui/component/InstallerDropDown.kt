@@ -11,8 +11,8 @@ import gg.essential.elementa.state.v2.ListState
 import gg.essential.elementa.state.v2.MutableState
 import gg.essential.elementa.state.v2.State
 import gg.essential.elementa.state.v2.combinators.map
+import gg.essential.elementa.state.v2.memo
 import gg.essential.elementa.state.v2.mutableStateOf
-import gg.essential.elementa.state.v2.stateBy
 import gg.essential.elementa.state.v2.stateOf
 import gg.essential.installer.gui.*
 
@@ -27,7 +27,7 @@ class InstallerDropDown<T>(
 
     private val optionTextPadding = 5f
     private val iconContainerWidth = 15f
-    private val maxItemWidthState = stateBy { items().maxOfOrNull { it.name().width() + 2 * optionTextPadding + iconContainerWidth } ?: 50f }
+    private val maxItemWidthState = memo { items().maxOfOrNull { it.name().width() + 2 * optionTextPadding + iconContainerWidth } ?: 50f }
 
     /** Public States **/
     val selectedOption: MutableState<Option<T>> = mutableStateOf(items.getUntracked().filterIsInstance<Option<T>>().first { it.value == initialSelection })
@@ -56,7 +56,7 @@ class InstallerDropDown<T>(
             }
         }
 
-        fun Modifier.customWidth() = this then BasicWidthModifier { basicWidthConstraint { maxItemWidthState.get() } }
+        fun Modifier.customWidth() = this then BasicWidthModifier { basicWidthConstraint { maxItemWidthState.getUntracked() } }
 
         fun Modifier.maxSiblingHeight() = this then BasicHeightModifier {
             basicHeightConstraint { it.parent.children.maxOfOrNull { child -> if (child === it) 0f else child.getHeight() } ?: 1f }
@@ -92,14 +92,14 @@ class InstallerDropDown<T>(
         this.layout(Modifier.height(48f).customWidth()) {
             column(Modifier.fillParent(), Arrangement.spacedBy(0f, FloatPosition.START), Alignment.Start) {
                 button(ButtonStyle.GRAY, Modifier.fillParent()) {
-                    installerText(stateBy { selectedOption().name() }, Modifier.alignHorizontal(Alignment.Start(16f)).color(InstallerPalette.TEXT))
+                    installerText(memo { selectedOption().name() }, Modifier.alignHorizontal(Alignment.Start(16f)).color(InstallerPalette.TEXT))
                     bind(arrowIconState) {
                         image(it, Modifier.width(13f).height(8f).alignVertical(Alignment.Center(true)).alignHorizontal(Alignment.End(22f)))
                     }
                 }.onLeftClick { event ->
                     event.stopPropagation()
 
-                    if (mutableExpandedState.get()) {
+                    if (mutableExpandedState.getUntracked()) {
                         collapse()
                     } else {
                         expand()
@@ -140,7 +140,7 @@ class InstallerDropDown<T>(
     }
 
     fun select(option: Option<T>) {
-        if (items.get().contains(option)) {
+        if (items.getUntracked().contains(option)) {
             selectedOption.set(option)
             collapse()
         }

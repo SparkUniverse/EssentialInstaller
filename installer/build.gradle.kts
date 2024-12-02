@@ -16,26 +16,26 @@ repositories {
 
 dependencies {
     // See https://github.com/EssentialGG/Elementa for latest Elementa and UC build numbers
-    val universalCraftVersion = 363
+    val universalCraftVersion = 365
     implementation("gg.essential:universalcraft-standalone:$universalCraftVersion")
 
-    val elementaVersion = 667
+    val elementaVersion = 676
     implementation("gg.essential:elementa:$elementaVersion")
     implementation("gg.essential:elementa-unstable-statev2:$elementaVersion")
     implementation("gg.essential:elementa-unstable-layoutdsl:$elementaVersion")
 
-    val log4jVersion = "2.23.1"
-    implementation("org.slf4j:slf4j-api:2.0.13")
+    val log4jVersion = "2.24.2"
+    implementation("org.slf4j:slf4j-api:2.0.16")
     implementation("org.apache.logging.log4j:log4j-api:$log4jVersion")
     implementation("org.apache.logging.log4j:log4j-core:$log4jVersion")
     implementation("org.apache.logging.log4j:log4j-slf4j2-impl:$log4jVersion")
 
-    val ktorVersion = "2.3.8"
+    val ktorVersion = "3.0.1"
     implementation("io.ktor:ktor-client-okhttp-jvm:$ktorVersion")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
     val jnaVersion = "5.14.0"
     implementation("net.java.dev.jna:jna:$jnaVersion")

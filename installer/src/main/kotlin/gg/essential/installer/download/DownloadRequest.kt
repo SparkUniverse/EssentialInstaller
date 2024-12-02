@@ -13,6 +13,7 @@ import io.ktor.utils.io.*
 import io.ktor.utils.io.core.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.io.readByteArray
 import java.io.FileNotFoundException
 import java.nio.file.Files
 import java.nio.file.OpenOption
@@ -69,8 +70,8 @@ class DownloadRequest(
                     val channel: ByteReadChannel = response.body()
                     while (!channel.isClosedForRead) {
                         val packet = channel.readRemaining(BUFFER_SIZE)
-                        while (!packet.isEmpty) {
-                            val bytes = packet.readBytes()
+                        while (!packet.exhausted()) {
+                            val bytes = packet.readByteArray()
                             outputStream.write(bytes)
                             totalReceived += bytes.size
                             if (contentLength >= 0) {

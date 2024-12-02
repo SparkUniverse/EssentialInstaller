@@ -7,6 +7,7 @@ import gg.essential.elementa.constraints.*
 import gg.essential.elementa.dsl.*
 import gg.essential.elementa.layoutdsl.*
 import gg.essential.elementa.state.v2.State
+import gg.essential.elementa.state.v2.effect
 import gg.essential.elementa.utils.ObservableClearEvent
 import gg.essential.elementa.utils.ObservableRemoveEvent
 
@@ -42,9 +43,9 @@ class Tooltip(
             }
         }
 
-        toggle(visible.get())
-        visible.onSetValue(logicalParent) {
-            toggle(it)
+        toggle(visible.getUntracked())
+        effect(logicalParent) {
+            toggle(visible())
         }
 
         return this

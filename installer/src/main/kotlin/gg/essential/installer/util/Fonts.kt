@@ -36,7 +36,7 @@ object Fonts {
                     logger.debug("Cached file not found, downloading fallback font from {}", fallbackFontUrl)
 
                     val response = HttpManager.httpGet(fallbackFontUrl)
-                    response.readBytes().also { bytes ->
+                    response.readRawBytes().also { bytes ->
                         cachedFile.writeBytes(bytes, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE, StandardOpenOption.WRITE)
                     }
                 }
