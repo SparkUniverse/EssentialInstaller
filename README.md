@@ -4,7 +4,7 @@ Essential Installer is a standalone installer for the [Essential Mod](https://es
 The installer is primarily written in Kotlin and includes a Rust wrapper, 
 which searches for an existing Java install, downloading one if none is found.
 
-The source code of the Essential Installer is accessible to everyone under <INSERT LICENCE HERE>.
+The source code of the Essential Installer is accessible to everyone under a [Use and Contribution License Agreement](LICENSE).
 
 For assistance with this repository or the installer, please use the dedicated channels available in our [Discord](https://essential.gg/discord).
 
@@ -52,4 +52,11 @@ For configurability, see:
 
 ## License
 
-TODO LICENSE
+The [Use and Contribution License Agreement](LICENSE) allows you to modify,
+create, fork, and use new versions of our Essential Installer mod in
+accordance with the GPL-3 License. However, if you submit a pull
+request with changes or additions to the main Essential Installer
+repository, subject to the terms of the license, you transfer the
+copyright and ownership of those changes to Essential. This
+introduction is for summary purposes only and does not constitute
+part of the agreement.
