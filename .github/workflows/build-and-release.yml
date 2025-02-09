@@ -1,0 +1,165 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+jobs:
+  build:
+    name: "Build"
+    uses: ./.github/workflows/build-workflow.yml
+    secrets: inherit
+  sign-macos:
+    name: Sign & Notarize macOS app
+    runs-on: macos-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: macOS Installer (Unsigned)
+          path: scripts
+      - name: List
+        run: ls
+        working-directory: scripts
+      - name: Install the Apple certificate and provisioning profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+      
+          # import certificate from secret
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+      
+          # create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+      
+          # import certificate to keychain
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+      - name: Sign the .app
+        env:
+          IDENTITY: ${{ secrets.IDENTITY }}   # "identity"
+          USERNAME: ${{ secrets.USERNAME }}   # "apple-id email"
+          PASSWORD: ${{ secrets.PASSWORD }}   # "apple-id app specific password (go to https://appleid.apple.com./)"
+          TEAM_ID: ${{ secrets.TEAM_ID }}     # "developer team id"
+          VERSION: ${{ github.ref_name }}     # "1.0.0"
+        run: |
+          chmod +x ./sign-macos-app.sh
+          ./sign-macos-app.sh
+        working-directory: scripts
+      - name: 'Upload Signed App'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macOS Installer
+          path: scripts/*.app.zip
+  sign-windows:
+    name: Sign Windows executable
+    runs-on: windows-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Temp Directory
+        run: mkdir dist
+        shell: cmd
+      - uses: actions/download-artifact@v4
+        with:
+          name: Windows Installer (Unsigned)
+          path: dist
+      - name: List
+        run: |
+          dir
+          echo %cd%
+        shell: cmd
+        working-directory: dist
+
+      - name: Setup Certificate
+        run: |
+          echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
+        shell: bash
+
+      - name: Set variables
+        id: variables
+        run: |
+          dir
+          echo "::set-output name=version::${GITHUB_REF#refs/tags/v}"
+          echo "::set-output name=KEYPAIR_NAME::gt-standard-keypair"
+          echo "::set-output name=CERTIFICATE_NAME::gt-certificate"
+          echo "SM_HOST=${{ secrets.SM_HOST }}" >> "$GITHUB_ENV"
+          echo "SM_API_KEY=${{ secrets.SM_API_KEY }}" >> "$GITHUB_ENV"
+          echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_ENV"
+          echo "SM_CLIENT_CERT_PASSWORD=${{ secrets.SM_CLIENT_CERT_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH
+          echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH
+          echo "C:\Program Files\DigiCert\DigiCert Keylocker Tools" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Setup Keylocker KSP on windows
+        run: |
+          curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/Keylockertools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o Keylockertools-windows-x64.msi
+          msiexec /i Keylockertools-windows-x64.msi /quiet /qn
+          smksp_registrar.exe list
+          smctl.exe keypair ls
+          C:\Windows\System32\certutil.exe -csp "DigiCert Signing Manager KSP" -key -user
+        shell: cmd
+
+      - name: Certificates Sync
+        run: |
+          smctl windows certsync
+        shell: cmd
+
+      - name: Signing using Signtool
+        run: |
+          signtool.exe sign /sha1 ${{ secrets.SM_CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 installer-wrapper.exe
+          signtool.exe verify /v /pa installer-wrapper.exe
+        working-directory: dist
+      - name: Rename executable
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          BRAND_LOWERCASE=$(cat ../wrapper/resources/info/brand.txt | tr '[:upper:]' '[:lower:]')
+          echo "Renaming to $BRAND_LOWERCASE-installer-$VERSION.exe"
+          mv installer-wrapper.exe "$BRAND_LOWERCASE-installer-$VERSION.exe"
+        shell: bash
+        working-directory: dist
+
+      - name: 'Upload Signed Executable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows Installer
+          path: dist/*.exe
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs:
+      - sign-macos
+      - sign-windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Windows Installer
+          path: scripts
+      - uses: actions/download-artifact@v4
+        with:
+          name: macOS Installer
+          path: scripts
+      - name: Release
+        env:
+          VERSION: ${{ github.ref_name }}
+          RELEASE_USER: ${{ secrets.RELEASE_USER }}
+          RELEASE_PASSWORD: ${{ secrets.RELEASE_PASSWORD }}
+        run: ./upload-all.sh
+        working-directory: scripts
+
+
+

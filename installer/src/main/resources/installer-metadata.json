@@ -1,0 +1,17 @@
+{
+    "brand": "Essential",
+    "name": "Essential Installer",
+    "version": "${version}",
+    "urls": {
+        "info": "https://essential.gg",
+        "support": "https://discord.com/invite/essential",
+        "update": "https://installer.essential.gg/v1/installer/latest",
+        "fallbackFont": "https://github.com/satbyy/go-noto-universal/releases/download/v7.0/GoNotoCurrent-Regular.ttf",
+        "forge": "https://files.minecraftforge.net",
+        "forgeInstaller": "https://maven.minecraftforge.net/net/minecraftforge/forge/{fullModloaderVersion}/forge-{fullModloaderVersion}-installer.jar",
+        "fabric": "https://meta.fabricmc.net",
+        "fabricFallback": "https://meta2.fabricmc.net",
+        "minecraftVersions": "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json",
+        "curseforgeModloaderInfo": "https://api.curseforge.com/v1/minecraft/modloader/{id}"
+    }
+}
