@@ -10,7 +10,7 @@ For assistance with this repository or the installer, please use the dedicated c
 
 ## Building
 
-Before building the Essential Installer, you must have both Rust and Java 21 or above JDK installed.
+Before building the Essential Installer, you must have both Rust and a Java 8 JDK installed.
 
 ### Building the installer
 
