@@ -15,10 +15,13 @@
 
 package gg.essential.installer.download.util
 
+import kotlinx.serialization.Serializable
+
 /**
  * An interface representing an Endpoint, which consists of a primary URL and fallback URLs
  */
-interface Endpoint {
+@Serializable
+sealed interface Endpoint {
 
     val primaryURL: String
     val fallbackURLs: List<String>

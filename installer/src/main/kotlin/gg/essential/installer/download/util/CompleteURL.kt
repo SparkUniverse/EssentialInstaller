@@ -15,9 +15,12 @@
 
 package gg.essential.installer.download.util
 
+import kotlinx.serialization.Serializable
+
 /**
  * A endpoint which consists of just a full URL and fallback URLs.
  */
+@Serializable
 data class CompleteURL(
     override val primaryURL: String,
     override val fallbackURLs: List<String> = emptyList()
