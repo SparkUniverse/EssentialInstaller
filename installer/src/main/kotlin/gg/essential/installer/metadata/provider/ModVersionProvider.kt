@@ -62,7 +62,7 @@ sealed interface ModVersionProvider {
         @Transient
         override val type = "url"
         @Transient
-        override val logger: Logger = LoggerFactory.getLogger("URL Mod Version Provider ($versionURL $downloadInfoURL)")
+        override val logger: Logger = LoggerFactory.getLogger("URL Mod Version Provider")
 
         override suspend fun getAvailableModVersions(): Map<MCVersion, Map<ModloaderType, ModVersions>> {
             return withContext(Dispatchers.IO) {
@@ -91,8 +91,7 @@ sealed interface ModVersionProvider {
 
                 }
 
-                val versionsString =
-                    versions.map { entry -> entry.key.toString() + "-" + entry.value.map { it.key.name + "-" + (it.value.latestFeatured ?: it.value.latest).version } }.joinToString("; ")
+                val versionsString = versions.entries.joinToString("; ") { (mcVersion, map) -> "$mcVersion-[${map.entries.joinToString(",") { (type, versions) -> "$type-${(versions.latestFeatured ?: versions.latest).version}" }}]"  }
                 logger.info("Versions: $versionsString")
                 versions
             }
@@ -162,8 +161,7 @@ sealed interface ModVersionProvider {
                         )
                     }
                 }
-                val versionsString =
-                    versionsMap.map { entry -> entry.key.toString() + "-" + entry.value.map { it.key.name + "-" + (it.value.latestFeatured ?: it.value.latest).version } }.joinToString("; ")
+                val versionsString = versionsMap.entries.joinToString("; ") { (mcVersion, map) -> "$mcVersion-[${map.entries.joinToString(",") { (type, versions) -> "$type-${(versions.latestFeatured ?: versions.latest).version}" }}]"  }
                 logger.info("Versions: $versionsString")
                 versionsMap
             }
