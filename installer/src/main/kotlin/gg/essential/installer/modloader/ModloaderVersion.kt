@@ -50,6 +50,7 @@ data class ModloaderVersion(
     companion object {
         // Note if anyone ever edits this: Order inside the matching group matters (specifically for first one), as we would otherwise not parse x.y.z.w correctly, we would match the x.y.z first
         private val FORGE_VERSION_REGEX = Pattern.compile("(?<version>(\\d+\\.\\d+|[02-9]|\\d{2,})\\.\\d+\\.\\d+)")
+        private val NEOFORGE_VERSION_REGEX = Pattern.compile("(?<version>(\\d+\\.\\d+\\.\\d+))")
 
 
         fun fromVersion(type: ModloaderType, fullVersion: String, providedNumericVersion: String? = null): ModloaderVersion {
@@ -90,8 +91,17 @@ data class ModloaderVersion(
                     x.y.z, where x must not be 1. This effectively matches anything that looks like a version, but is not a minecraft version.
                     Let's hope Minecraft doesn't update to 2.0...
                     */
-                    ModloaderType.FORGE, ModloaderType.NEOFORGE -> {
+                    ModloaderType.FORGE -> {
                         val matcher = FORGE_VERSION_REGEX.matcher(fullVersion)
+                        if (matcher.find()) {
+                            matcher.group("version")
+                        } else {
+                            ""
+                        }
+                    }
+                    // Neoforge doesn't have multiple numeric versions, making this easy
+                    ModloaderType.NEOFORGE -> {
+                        val matcher = NEOFORGE_VERSION_REGEX.matcher(fullVersion)
                         if (matcher.find()) {
                             matcher.group("version")
                         } else {

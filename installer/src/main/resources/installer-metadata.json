@@ -11,6 +11,8 @@
         "forgeInstaller": "https://maven.minecraftforge.net/net/minecraftforge/forge/{fullModloaderVersion}/forge-{fullModloaderVersion}-installer.jar",
         "fabric": "https://meta.fabricmc.net",
         "fabricFallback": "https://meta2.fabricmc.net",
+        "neoforge": "https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge",
+        "neoforgeInstaller": "https://maven.neoforged.net/releases/net/neoforged/neoforge/{fullModloaderVersion}/neoforge-{fullModloaderVersion}-installer.jar",
         "minecraftVersions": "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json",
         "curseforgeModloaderInfo": "https://api.curseforge.com/v1/minecraft/modloader/{id}"
     }

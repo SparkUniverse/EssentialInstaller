@@ -37,6 +37,8 @@ data class InstallerMetadata(
         val forgeInstaller: String,
         val fabric: String,
         val fabricFallback: String,
+        val neoforge: String,
+        val neoforgeInstaller: String,
         val minecraftVersions: String,
         val curseforgeModloaderInfo: String,
     )

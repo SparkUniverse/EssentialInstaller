@@ -96,7 +96,7 @@ abstract class Modloader(val type: ModloaderType) {
         }
     }
 
-    fun getPrismModloaderComponent(installInfo: PrismInstallInfo): MMCPack.Component {
+    open fun getPrismModloaderComponent(installInfo: PrismInstallInfo): MMCPack.Component {
         return MMCPack.Component(
             uid = installInfo.modloader.type.prismUID ?: throw IllegalArgumentException("Cannot get prism component for ${installInfo.modloader.type}"),
             version = installInfo.modloaderVersion.numeric,

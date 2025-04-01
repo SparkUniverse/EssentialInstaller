@@ -31,7 +31,7 @@ enum class ModloaderType(
     FABRIC("Fabric", lazy { FabricModloader }, "net.fabricmc.fabric-loader", listOf("net.fabricmc.intermediary")),
     FORGE("Forge", lazy { ForgeModloader }, "net.minecraftforge"),
     QUILT("Quilt", null, "org.quiltmc.quilt-loader", listOf("net.fabricmc.intermediary")),
-    NEOFORGE("NeoForge", null, "net.neoforged"),
+    NEOFORGE("NeoForge", lazy { NeoForgeModloader }, "net.neoforged"),
 
     NONE_SNAPSHOT("Snapshot"), // To allow parsing snapshot versions
     NONE_ALPHA("Alpha"), // To allow parsing alpha versions
