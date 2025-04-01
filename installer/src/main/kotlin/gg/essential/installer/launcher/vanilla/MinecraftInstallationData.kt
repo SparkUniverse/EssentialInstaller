@@ -20,6 +20,7 @@ package gg.essential.installer.launcher.vanilla
 import gg.essential.installer.minecraft.MCVersion
 import gg.essential.installer.modloader.ModloaderInfo
 import gg.essential.installer.modloader.ModloaderType
+import gg.essential.installer.modloader.ModloaderVersion
 import gg.essential.installer.util.InstantAsIso8601Serializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
@@ -44,6 +45,10 @@ data class MinecraftInstallationData(
         get() = when (ModloaderInfo.fromVersionString(lastVersionId).type) {
             ModloaderType.NONE_MODERN -> MCVersion.fromString(lastVersionId)
             ModloaderType.FORGE -> MCVersion.fromString(lastVersionId.split('-').first()) // Example: 1.18.2-forge-40.0.12
+            ModloaderType.NEOFORGE -> {
+                val numeric = ModloaderVersion.fromVersion(ModloaderType.NEOFORGE, lastVersionId).numeric
+                MCVersion.fromString("1." + numeric.substring(0..<numeric.lastIndexOf('.')))
+            } // Example: neoforge-21.5.14-beta
             ModloaderType.FABRIC -> MCVersion.fromString(lastVersionId.split('-').last()) // Example: fabric-loader-0.15.3-1.20.4
             else -> MCVersion.fromString(lastVersionId, false) // Try parsing non-strictly, to at least get the version hopefully
         }

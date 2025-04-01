@@ -219,9 +219,11 @@ class CurseForge(
      * The real installer modifies this JSON a bit (removes a few fields), but it shouldn't be a problem if we just include the entire one.
      */
     private suspend fun getModloaderJson(installInfo: InstallInfo): JsonObject {
-        var id = "${installInfo.modloader.type.name.lowercase()}-${installInfo.modloaderVersion.numeric}"
-        if (installInfo.modloader.type == ModloaderType.FABRIC || installInfo.modloader.type == ModloaderType.QUILT) {
-            id += "-${installInfo.mcVersion}"
+        val modloaderType = installInfo.modloader.type
+        val id = "${modloaderType.name.lowercase()}-" + when (modloaderType) {
+            ModloaderType.FABRIC, ModloaderType.QUILT -> "${installInfo.modloaderVersion.numeric}-${installInfo.mcVersion}"
+            ModloaderType.NEOFORGE -> installInfo.modloaderVersion.full
+            else -> installInfo.modloaderVersion.numeric
         }
         logger.info("Fetching $id from curseforge.")
         val url = MetadataManager.installer.urls.curseforgeModloaderInfo.replace("{id}", id)
