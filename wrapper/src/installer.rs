@@ -80,8 +80,9 @@ pub fn try_run_installer(
 
     let debug_arg = format!("-Dinstaller.debug={}", wrapper_info.debug);
     let version_arg = format!("-Dwrapper.version={}", VERSION);
+    let no_mod_arg = format!("-Dinstaller.noModInstall={}", wrapper_info.no_mod_install);
 
-    let mut args: Vec<&str> = vec![debug_arg.as_str(), version_arg.as_str()];
+    let mut args: Vec<&str> = vec![debug_arg.as_str(), version_arg.as_str(), no_mod_arg.as_str()];
 
     let temp_arg: String;
     if let Some(temp_str) = wrapper_info.temp_dir.to_str() {

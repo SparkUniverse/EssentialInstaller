@@ -61,6 +61,7 @@ pub fn main() {
         debug: args.contains(&String::from("--debug")),
         no_java_search: args.contains(&String::from("--no-java-search")),
         force_error: args.contains(&String::from("--force-error")),
+        no_mod_install: args.contains(&String::from("--no-mod-install")),
         temp_dir,
         cache_dir,
     };
@@ -107,6 +108,7 @@ pub struct WrapperInfo {
     pub debug: bool,
     pub no_java_search: bool,
     pub force_error: bool,
+    pub no_mod_install: bool,
     pub temp_dir: PathBuf,
     pub cache_dir: PathBuf,
 }

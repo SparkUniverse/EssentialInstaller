@@ -50,12 +50,15 @@ private val height = System.getProperty("ui.height")?.toIntOrNull() ?: 600
 private val scaleFactor = System.getProperty("ui.scaleFactor")?.toIntOrNull() ?: 1
 private val resizable = System.getProperty("ui.resizable")?.toBoolean() ?: false
 private val debug = System.getProperty("installer.debug")?.toBoolean() ?: false
+private val noModInstall = System.getProperty("installer.noModInstall")?.toBoolean() ?: false
 
 private lateinit var mainCoroutineScope: CoroutineScope
 private var requestRestart = false
 private var requestShutdown = false
 
 fun isDebug() = debug
+
+fun isNoModInstallMode() = noModInstall
 
 fun main(args: Array<String>) {
     // Most important things to be loaded before anything else is run
