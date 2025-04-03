@@ -17,12 +17,15 @@ package gg.essential.installer.mod
 
 import gg.essential.elementa.state.v2.State
 import gg.essential.elementa.state.v2.combinators.map
+import gg.essential.elementa.state.v2.filter
 import gg.essential.elementa.state.v2.memo
 import gg.essential.elementa.state.v2.mutableStateOf
 import gg.essential.elementa.state.v2.toListState
 import gg.essential.installer.download.DownloadRequest
+import gg.essential.installer.download.util.DownloadInfo
 import gg.essential.installer.install.InstallSteps
 import gg.essential.installer.install.installationStep
+import gg.essential.installer.isNoModInstallMode
 import gg.essential.installer.launcher.InstallInfo
 import gg.essential.installer.logging.Logging.logger
 import gg.essential.installer.metadata.BRAND
@@ -31,6 +34,7 @@ import gg.essential.installer.metadata.MetadataManager
 import gg.essential.installer.metadata.VERSION
 import gg.essential.installer.metadata.data.ModMetadata
 import gg.essential.installer.minecraft.MCVersion
+import gg.essential.installer.modloader.Modloader
 import gg.essential.installer.modloader.ModloaderType
 import gg.essential.installer.platform.Platform
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -68,6 +72,16 @@ object ModManager {
 
     suspend fun loadModVersionsAndMetadata() {
         logger.info("Loading mod versions and metadata!")
+
+        if (isNoModInstallMode()) {
+            logger.warn("Running in no mod install mode! This means mod versions will not actually be loaded!")
+            MCVersion.refreshKnownMcVersions() // Hack, since this is otherwise refreshed after this method...
+            val version = ModVersion("", "", DownloadInfo("", "", true))
+            val map = Modloader.entries.associate { it.type to ModVersions(version, null, listOf(version)) }
+            availableVersions.set(MCVersion.knownVersions.filter { it >= MCVersion(8, 9) }.getUntracked().associateWith { map })
+            return
+        }
+
         val dataProviders = MetadataManager.dataProviders
 
         logger.debug("Version provider: {}", dataProviders.modVersionProviderStrategy)
@@ -189,6 +203,9 @@ object ModManager {
 
     @OptIn(ExperimentalSerializationApi::class)
     fun getInstallSteps(installInfo: InstallInfo): InstallSteps {
+        if (isNoModInstallMode()) {
+            return InstallSteps()
+        }
         val modVersion = installInfo.modVersion
         val downloadInfo = modVersion.downloadInfo
         val filename = if(modVersion.version.isBlank()) "$BRAND-${installInfo.mcVersion}.jar" else "$BRAND-${modVersion.version}-${installInfo.mcVersion}.jar"
