@@ -27,7 +27,7 @@ import java.util.*
 
 @Serializable
 data class CurseForgeInstance(
-    val baseModLoader: Modloader,
+    val baseModLoader: Modloader?,
     val lastPlayed: Instant = Instant.MIN,
     // val isVanilla: Boolean, // Removed, since we don't need it, and some instances seem to miss it?
     val guid: String = UUID.randomUUID().toString(),
@@ -44,6 +44,6 @@ data class CurseForgeInstance(
     )
 
     val modloaderInfo: ModloaderInfo
-        get() = ModloaderInfo.fromVersionString(baseModLoader.name)
+        get() = ModloaderInfo.fromVersionString(baseModLoader?.name ?: gameVersion.toString())
 
 }
