@@ -21,20 +21,31 @@ import gg.essential.elementa.constraints.*
 import gg.essential.elementa.dsl.*
 import gg.essential.elementa.effects.ScissorEffect
 import gg.essential.elementa.layoutdsl.*
+import gg.essential.elementa.state.v2.combinators.map
+import gg.essential.elementa.state.v2.memo
 import gg.essential.elementa.state.v2.mutableStateOf
+import gg.essential.elementa.state.v2.stateOf
 import gg.essential.elementa.state.v2.toV1
 import gg.essential.elementa.util.onAnimationFrame
 import gg.essential.installer.exitInstaller
 import gg.essential.installer.gui.*
 import gg.essential.installer.gui.component.*
+import gg.essential.installer.install.InstallStep
+import gg.essential.installer.install.InstallSteps
+import gg.essential.installer.install.start
 import gg.essential.installer.launchInMainCoroutineScope
+import gg.essential.installer.launcher.InstallInfo
+import gg.essential.installer.launcher.Launcher
+import gg.essential.installer.launcher.Launchers
 import gg.essential.installer.logging.Logging.logger
+import gg.essential.installer.mod.ModManager
 import gg.essential.installer.platform.Platform
 import gg.essential.universal.UDesktop
 import gg.essential.universal.UScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.awt.Color
+import gg.essential.installer.launcher.Installation as LInstallation
 
 /**
  * Debug page, of random things I need(ed) during testing
@@ -58,6 +69,9 @@ object DebugPage : InstallerPage() {
                 textButton("No Launchers page", ButtonStyle.GRAY, Modifier.width(200f).height(48f)) {
                     PageHandler.navigateTo(NoLauncherFoundPage)
                 }
+                textButton("Install Everything", ButtonStyle.GRAY, Modifier.width(200f).height(48f)) {
+                    PageHandler.navigateTo(InstallEverything)
+                }
                 textButton("Restart", ButtonStyle.GRAY, Modifier.width(200f).height(48f)) {
                     exitInstaller(true)
                 }
@@ -80,6 +94,83 @@ object DebugPage : InstallerPage() {
             scrollbar = UIRoundedRectangle(3f)(Modifier.fillWidth().color(Color(0x232323)))
         }
         scroller.setVerticalScrollBarComponent(scrollbar)
+    }
+
+    object InstallEverything : InstallerPage() {
+
+        private val map = memo {
+            ModManager.getAvailableMCVersions()().associateWith { ModManager.getAvailableModloaders(stateOf(it))() }
+        }
+        private val count = map.map { m -> m.entries.sumOf { it.value.size } }
+
+        private val installation = mutableStateOf<InstallStep<*, *>?>(null)
+
+        override fun LayoutScope.layoutPage() {
+
+            titleAndBody(
+                "Install everything",
+                """
+                    This page allows you to install every single supported version & modloader in bulk.
+                    This will create ${count.getUntracked()} profiles/installs!
+                    Select a modloader on the right to install all possible profiles to it.
+                """,
+                modifier = Modifier.alignTopLeft()
+            )
+            column(Modifier.width(320f).alignTopRight(), Arrangement.spacedBy(8f, FloatPosition.START)) {
+                forEach(Launchers.launchers) { launcher ->
+                    launcherButton(launcher)
+                }
+            }
+            val desc = memo {
+                val inst = installation() ?: return@memo "Not installing..."
+                val currentStep = inst.currentStep()
+                val stepsCompleted = inst.stepsCompleted()
+                val numberOfSteps = inst.numberOfSteps()
+                "Installing: ${currentStep.id} ($stepsCompleted/$numberOfSteps)"
+            }
+            box(Modifier.alignBottomRight()) {
+                installerText(desc)
+            }
+        }
+
+        private fun <I : LInstallation, NI : InstallInfo.New, EI : InstallInfo.Edit<I>> LayoutScope.launcherButton(launcher: Launcher<I, NI, EI>) {
+            button(stateOf(ButtonStyle.GRAY), disabled = installation.map { it != null }, modifier = Modifier.fillWidth().height(96f)) {
+                row(Modifier.fillWidth(padding = 24f), Arrangement.spacedBy(24f, FloatPosition.START)) {
+                    box(Modifier.width(64f).heightAspect(1f)) {
+                        image(launcher.type.icon, Modifier.fillParent().color(Color.WHITE))
+                    }
+                    installerBoldText(launcher.type.displayName, Modifier.color(InstallerPalette.TEXT))
+                }
+            }.onLeftClick {
+                if (installation.getUntracked() != null) return@onLeftClick
+                val installationInfos = map.getUntracked().flatMap { (mcVersion, modloaders) ->
+                    modloaders.mapNotNull { modloader ->
+                        val installInfo = launcher.getNewInstallInfo(
+                            "Debug - $mcVersion ${modloader.type.displayName}",
+                            ModManager.getBestModVersion(mcVersion, modloader.type).getUntracked() ?: return@mapNotNull null,
+                            mcVersion,
+                            modloader,
+                            modloader.getBestModloaderVersion(mcVersion).getUntracked() ?: return@mapNotNull null
+                        )
+                        InstallSteps.merge(
+                            modloader.getInstallSteps(installInfo),
+                            launcher.getNewInstallationInstallSteps(installInfo),
+                        )
+                    }
+                }
+                val inst = InstallSteps.merge(*installationInfos.toTypedArray()).convertToSingleInstallStep()
+
+                installation.set(inst)
+
+                launchInMainCoroutineScope {
+                    logger.info("Starting Install")
+                    inst.start()
+                    installation.set(null)
+                }
+            }
+        }
+
+
     }
 
 }
