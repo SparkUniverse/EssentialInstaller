@@ -449,10 +449,12 @@ abstract class AbstractTextInput(
 
         val absoluteStart = LinePosition(0, 0, isVisual = true)
         val replaceTextOperation = ReplaceTextOperation(
-            absoluteStart,
-            LinePosition(visualLines.lastIndex, visualLines.last().length, isVisual = true),
-            newText,
-            true
+            AddTextOperation(newText, absoluteStart),
+            RemoveTextOperation(
+                absoluteStart,
+                LinePosition(visualLines.lastIndex, visualLines.last().length, isVisual = true),
+                selectAfterUndo = true
+            )
         )
         commitTextOperation(replaceTextOperation)
     }
@@ -523,13 +525,16 @@ abstract class AbstractTextInput(
             return
         }
 
+        val addTextOperation = AddTextOperation(text, cursor)
+
         if (hasSelection()) {
-            val replaceTextOperation = ReplaceTextOperation(selectionStart(), selectionEnd(), newText, true)
+            val removeTextOperation = RemoveTextOperation(selectionStart(), selectionEnd(), selectAfterUndo = true)
+            val replaceTextOperation = ReplaceTextOperation(addTextOperation, removeTextOperation)
             commitTextOperation(replaceTextOperation)
             return
         }
 
-        commitTextOperation(AddTextOperation(text, cursor))
+        commitTextOperation(addTextOperation)
     }
 
     protected fun addText(newText: String, position: LinePosition) {
@@ -1100,29 +1105,17 @@ abstract class AbstractTextInput(
     }
 
     protected inner class ReplaceTextOperation(
-        private val startPos: LinePosition,
-        private val endPos: LinePosition,
-        private val newText: String,
-        private val selectAfterUndo: Boolean,
+        val addTextOperation: AddTextOperation,
+        val removeTextOperation: RemoveTextOperation
     ) : TextOperation() {
-        private val textOld = getTextBetween(startPos, endPos)
-        private var removeStartPos: LinePosition = startPos
-
         override fun redo() {
-            removeText(startPos, endPos)
-            removeStartPos = minOf(cursor, startPos)
-            addText(newText, removeStartPos)
+            removeTextOperation.redo()
+            addTextOperation.redo()
         }
 
         override fun undo() {
-            removeText(removeStartPos, removeStartPos.offsetColumn(newText.length))
-            addText(textOld, startPos)
-            setCursorPosition(endPos.toVisualPos())
-            if (selectAfterUndo) {
-                cursor = startPos
-                otherSelectionEnd = endPos
-                cursorNeedsRefocus = true
-            }
+            addTextOperation.undo()
+            removeTextOperation.undo()
         }
     }
 
