@@ -94,6 +94,11 @@ object NeoForgeModloader : Modloader(ModloaderType.NEOFORGE) {
 
             return neoforgeVersionList.fold(mutableMapOf<MCVersion, MutableList<ModloaderVersion>>()) { acc, ver ->
                 val modloaderVersion = ModloaderVersion.fromVersion(ModloaderType.NEOFORGE, ver)
+                // NeoForge decided to support the craftmine april fools, which was the first version that (obviously) didn't have the numeric version parseable
+                if (modloaderVersion.numeric.isBlank()) {
+                    logger.warn("Failed to parse $ver! No numeric version was found...")
+                    return@fold acc
+                }
                 val versionRaw = "1." + modloaderVersion.numeric.substring(0..<modloaderVersion.numeric.lastIndexOf('.'))
                 val mcVersion = MCVersion.fromString(versionRaw) ?: return@fold acc
                 val list = acc.getOrPut(mcVersion) { mutableListOf() }
