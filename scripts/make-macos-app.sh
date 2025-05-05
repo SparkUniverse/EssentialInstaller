@@ -53,7 +53,7 @@ cat >"$APP_NAME.app/Contents/Info.plist" <<EOL
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>3.0.5</string>
+	<string>3.1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>NSHighResolutionCapable</key>
