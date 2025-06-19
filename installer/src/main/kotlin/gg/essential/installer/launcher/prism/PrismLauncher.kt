@@ -126,7 +126,7 @@ class PrismLauncher(
     }
 
     override fun getNewGameDataFolder(name: String): Path {
-        return appendInstallNameToPath(instancesFolder, name) / ".minecraft"
+        return appendInstallNameToPath(instancesFolder, name) / "minecraft"
     }
 
     override fun getNewInstallInfo(name: String, modVersion: ModVersion, mcVersion: MCVersion, modloader: Modloader, modloaderVersion: ModloaderVersion): PrismInstallInfo.New {
