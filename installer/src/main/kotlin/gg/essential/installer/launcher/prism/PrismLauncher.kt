@@ -257,7 +257,7 @@ class PrismLauncher(
                 Files.newOutputStream(packPath, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE).use { json.encodeToStream(packJsonObject, it) }
                 logger.debug("Wrote pack to {}", packPath)
             }.then(installStepName) {
-                if (editInstallInfo.updateName)
+                if (!editInstallInfo.updateName)
                     return@then
 
                 val configPath = editInstallInfo.instanceFolder / "instance.cfg"
