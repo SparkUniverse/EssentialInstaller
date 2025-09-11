@@ -22,7 +22,8 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{env, fs};
-use zip_extract::ZipExtractError;
+use zip::result::{ZipResult};
+use zip::ZipArchive;
 
 const NONEXISTANT_PATH_NAME: &str = "this-directory-does-not-exist";
 
@@ -77,7 +78,7 @@ pub fn delete_temp_dir(wrapper_info: &WrapperInfo) {
     }
 }
 
-pub fn extract_zip(zip_path: PathBuf, target_path: PathBuf) -> Result<(), ZipExtractError> {
+pub fn extract_zip(zip_path: PathBuf, target_path: PathBuf) -> ZipResult<()> {
     info!(
         "Extracting {} to {}",
         zip_path.display(),
@@ -86,10 +87,9 @@ pub fn extract_zip(zip_path: PathBuf, target_path: PathBuf) -> Result<(), ZipExt
     if target_path.try_exists()? {
         fs::remove_dir_all(target_path.clone())?;
     }
-    
-    let file = File::open(zip_path).map_err(ZipExtractError::Io)?;
+    let file = File::open(zip_path)?;
 
-    zip_extract::extract(file, target_path.as_path(), true)
+    ZipArchive::new(file)?.extract(target_path)
 }
 
 pub enum State {
