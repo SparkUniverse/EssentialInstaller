@@ -14,7 +14,7 @@
  */
 use crate::app::AppMessage;
 use iced::font::{Family, Weight};
-use iced::{font, Command, Font};
+use iced::{font, Font, Task};
 
 const TITLE_FONT_BYTES: &[u8] = include_bytes!("../resources/fonts/TitleFont.ttf");
 pub const TITLE_FONT: Font = Font {
@@ -37,8 +37,8 @@ pub const GEIST_SEMIBOLD: Font = Font {
     ..Font::DEFAULT
 };
 
-pub fn load_fonts() -> Command<AppMessage> {
-    Command::batch(vec![
+pub fn load_fonts() -> Task<AppMessage> {
+    Task::batch(vec![
         font::load(TITLE_FONT_BYTES),
         font::load(GEIST_REGULAR_BYTES),
         font::load(GEIST_SEMIBOLD_BYTES),

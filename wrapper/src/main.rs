@@ -35,6 +35,7 @@ mod java;
 mod logging;
 mod macros;
 mod process;
+mod util;
 
 pub const BRAND: &str = include_str!("../resources/info/brand.txt");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
