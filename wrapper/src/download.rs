@@ -60,12 +60,6 @@ pub fn download_java_task(
             })?;
         }
 
-        let mut file = File::create(download_path.clone()).map_err(|e| {
-            TaskError::IOError("Error creating the download file!".to_string(), Arc::new(e))
-        })?;
-
-        info!("File created!");
-
         let client = reqwest::Client::builder()
             .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(120)) // 3 mbit download for 45MB file
@@ -88,21 +82,39 @@ pub fn download_java_task(
 
         output.send(AppState::Downloading(url.clone(), 0.0)).await?;
 
+        let mut buffer = vec![0u8; total as usize];
         let mut byte_stream = response.bytes_stream();
         let mut downloaded = 0;
 
         while let Some(next_bytes) = byte_stream.next().await {
             let bytes = next_bytes?;
+            let previously_downloaded = downloaded;
             downloaded += bytes.len();
-            file.write_all(&bytes)?;
+            buffer[previously_downloaded..downloaded].copy_from_slice(&bytes);
             let progress = 100.0 * downloaded as f32 / total as f32;
             if let Err(e) = output.try_send(AppState::Downloading(url.clone(), progress)) {
                 debug!("Channel full!")
             }
         }
 
-        output.send(AppState::DownloadFinished(download_path)).await?;
-        info!("Successfully downloaded java!");
+        if let Err(e) = output.try_send(AppState::Downloading(url.clone(), 100f32)) {
+            debug!("Channel full! {}", e)
+        }
+
+        info!("Finished downloading!");
+
+        let mut file = File::create(download_path.clone()).map_err(|e| {
+            TaskError::IOError("Error creating the download file!".to_string(), Arc::new(e))
+        })?;
+
+        info!("File created!");
+
+        file.write_all(&buffer[..downloaded])?;
+
+        info!("Written to file!");
+        if let Err(e) = output.try_send(AppState::DownloadFinished(download_path.clone())) {
+            debug!("Channel full! {}", e)
+        }
         Ok(())
     })
 }

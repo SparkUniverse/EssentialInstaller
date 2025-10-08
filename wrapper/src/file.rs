@@ -95,39 +95,6 @@ pub fn extract_zip(zip_path: PathBuf, target_path: PathBuf) -> ZipResult<()> {
     ZipArchive::new(file)?.extract_unwrapped_root_dir(target_path, root_dir_common_filter)
 }
 
-/*pub fn extract_java(cache_dir: PathBuf, download_path: PathBuf) -> Subscription<AppMessage> {
-    Subscription::run_with_id("extract-java", extract_java_task(cache_dir, download_path))
-        .map(|t| {
-            if let Err(e) = t {
-                error!("Error when extracting java: {}", e);
-                AppMessage::UpdateState(AppState::Errored(format!("Error extracting java: {}", e)))
-            } else {
-                AppMessage::UpdateState(t.unwrap())
-            }
-        })
-}
-
-pub fn extract_java_task(
-    cache_dir: PathBuf,
-    download_path: PathBuf,
-) -> impl Stream<Item = Result<AppState, TaskError>> {
-    try_channel(10, move |mut output| async move {
-        let extract_path = get_java_extract_folder_from_cache_dir(&cache_dir);
-        info!("Temporary jre folder: {}", extract_path.display());
-        let state = extract_zip(download_path.clone(), extract_path.clone())
-            .map(|_| {
-                info!("Successfully extracted java!");
-                AppState::ExtractFinished
-            })
-            .unwrap_or_else(|e| {
-                error!("Error when extracting java: {}", e);
-                AppState::Errored(format!("Error extracting java: {}", e))
-            });
-        output.try_send(state).map_err(|_| TaskError::ChannelFailure())?;
-        Ok(())
-    })
-}*/
-
 pub fn extract_java_task(cache_dir: PathBuf, download_path: PathBuf) -> Task<AppMessage> {
     Task::perform(
         async move {
@@ -138,14 +105,9 @@ pub fn extract_java_task(cache_dir: PathBuf, download_path: PathBuf) -> Task<App
                 let res = extract_zip(download_path, extract_path)
                     .map(|_| AppState::ExtractFinished)
                     .unwrap_or_else(|e| AppState::Errored(format!("Error extracting java: {e}")));
-                info!("Result: {}", res);
                 let _ = tx.send(res);
             });
-            let res = rx
-                .await
-                .unwrap_or_else(|_| AppState::Errored("Extraction thread dropped".into()));
-            info!("Result 2: {}", res);
-            res
+            rx.await.unwrap_or_else(|_| AppState::Errored("Extraction thread dropped".into()))
         },
         AppMessage::UpdateState,
     )

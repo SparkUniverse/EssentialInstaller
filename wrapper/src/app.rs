@@ -15,7 +15,7 @@
 
 use crate::download::download_java;
 use crate::file::extract_java_task;
-use crate::installer::run_installer;
+use crate::installer::{run_installer_task};
 use crate::java::get_java_executable_in_downloaded_jre;
 use crate::logging::get_logging_file_from_temp_directory;
 use crate::{fonts, WrapperInfo, BRAND};
@@ -142,15 +142,7 @@ impl WrapperApp {
                     self.app_state = new_state
                 }
                 if let AppState::DownloadFinished(download_path) = &mut self.app_state {
-                    let task = extract_java_task(
-                        self.wrapper_info.cache_dir.clone(),
-                        download_path.clone(),
-                    );
-                    // self.app_state = AppState::ExtractingJava(download_path.clone());
-                    return Task::perform(
-                        async { AppState::ExtractFinished },
-                        AppMessage::UpdateState,
-                    );
+                    self.app_state = AppState::ExtractingJava(download_path.clone());
                 }
                 if let AppState::ExtractFinished = &mut self.app_state {
                     self.app_state = if let Some(exec) =
@@ -166,9 +158,20 @@ impl WrapperApp {
                     return iced::exit();
                 }
                 // Compiler complained?
+
+                let info = self.wrapper_info.clone();
+                let cache_dir = info.cache_dir.clone();
                 let state = self.app_state.clone();
-                window::get_oldest().and_then(move |id| match state {
+                window::get_oldest().and_then(move |id| match &state {
                     AppState::Downloading(_, _) => window::change_mode(id, Mode::Windowed),
+                    AppState::ExtractingJava(download_path) => Task::batch(vec![
+                        window::change_mode(id, Mode::Windowed),
+                        extract_java_task(cache_dir.clone(), download_path.clone()),
+                    ]),
+                    AppState::InstallerRunning(exec) => Task::batch(vec![
+                        window::change_mode(id, Mode::Hidden),
+                        run_installer_task(exec.clone(), info.clone()),
+                    ]),
                     AppState::Errored(_) => Task::batch(vec![
                         window::change_mode(id, Mode::Windowed),
                         window::toggle_decorations(id),
@@ -288,12 +291,6 @@ impl WrapperApp {
         match &self.app_state {
             AppState::Downloading(url, _) => {
                 download_java(url.clone(), self.wrapper_info.cache_dir.clone())
-            }
-            /*AppState::ExtractingJava(download_path) => {
-                extract_java(self.wrapper_info.cache_dir.clone(), download_path.clone())
-            }*/
-            AppState::InstallerRunning(java_executable) => {
-                run_installer(java_executable.clone(), self.wrapper_info.clone())
             }
             _ => Subscription::none(),
         }

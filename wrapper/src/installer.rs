@@ -17,12 +17,10 @@ use crate::java::test_java;
 use crate::process::run_process;
 use crate::{app, show_error, WrapperInfo, VERSION};
 use app::{AppMessage, AppState};
-use iced::futures::Stream;
-use iced::futures::{SinkExt, StreamExt};
-use iced::stream::channel;
-use iced::Subscription;
+use iced::{Task};
 use log::{error, info, warn};
 use std::process::exit;
+use iced::futures::channel::oneshot;
 
 pub enum InstallerExitCode {
     Success,
@@ -153,50 +151,49 @@ pub fn get_installer_path(_wrapper_info: &WrapperInfo) -> Option<String> {
     path.into_os_string().into_string().ok()
 }
 
-pub fn run_installer(
-    java_executable: String,
-    wrapper_info: WrapperInfo,
-) -> Subscription<AppMessage> {
-    Subscription::run_with_id(
-        "run-installer",
-        run_installer_task(java_executable, wrapper_info).map(AppMessage::UpdateState),
-    )
-}
-
-// This is 100% not how I should use a stream, but it works for now.
-// If you see this it means I forgot to come back and look at this again
 pub fn run_installer_task(
     java_executable: String,
     wrapper_info: WrapperInfo,
-) -> impl Stream<Item = AppState> {
-    channel(1, move |mut output| async move {
-        let state = match try_run_installer(&java_executable, &wrapper_info) {
-            Ok(ex) => match ex {
-                InstallerExitCode::Success => AppState::Finished,
-                InstallerExitCode::UnknownError => {
-                    error!("Unknown error when running installer!");
-                    AppState::Errored("Unknown error!".to_string())
-                }
-                InstallerExitCode::NoOpenGl => {
-                    error!("No OpenGL found when running installer!");
-                    AppState::Errored("No OpenGL found!".to_string())
-                }
-                InstallerExitCode::UnsupportedPath => {
-                    error!("Launcher found an unsupported path!");
-                    AppState::Errored("Launcher found an unsupported path!".to_string())
-                }
-            },
-            Err(e) => {
-                let error = match e {
-                    InstallerRunError::JavaFailed => "Java test failed!".to_string(),
-                    InstallerRunError::UnknownExitCode(c) => {
-                        format!("Unknown installer exit code: {}", c)
+) -> Task<AppMessage> {
+    Task::perform(
+        async move {
+            let (tx, rx) = oneshot::channel();
+            std::thread::spawn(move || {
+                let state = match try_run_installer(&java_executable, &wrapper_info) {
+                    Ok(ex) => match ex {
+                        InstallerExitCode::Success => AppState::Finished,
+                        InstallerExitCode::UnknownError => {
+                            error!("Unknown error when running installer!");
+                            AppState::Errored("Unknown error!".to_string())
+                        }
+                        InstallerExitCode::NoOpenGl => {
+                            error!("No OpenGL found when running installer!");
+                            AppState::Errored("No OpenGL found!".to_string())
+                        }
+                        InstallerExitCode::UnsupportedPath => {
+                            error!("Launcher found an unsupported path!");
+                            AppState::Errored("Launcher found an unsupported path!".to_string())
+                        }
+                    },
+                    Err(e) => {
+                        let error = match e {
+                            InstallerRunError::JavaFailed => "Java test failed!".to_string(),
+                            InstallerRunError::UnknownExitCode(c) => {
+                                format!("Unknown installer exit code: {}", c)
+                            }
+                            InstallerRunError::Other => "Unknown error!".to_string(),
+                        };
+                        AppState::Errored(error)
                     }
-                    InstallerRunError::Other => "Unknown error!".to_string(),
                 };
-                AppState::Errored(error)
-            }
-        };
-        let _ = output.send(state).await;
-    })
+                let _ = tx.send(state);
+            });
+            let res = rx
+                .await
+                .unwrap_or_else(|_| AppState::Errored("Extraction thread dropped".into()));
+            info!("Result 2: {}", res);
+            res
+        },
+        AppMessage::UpdateState,
+    )
 }
