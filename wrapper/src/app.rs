@@ -176,7 +176,7 @@ impl Application for WrapperApp {
 
     fn view(&self) -> Element<AppMessage, AppTheme> {
         let title_text: &str = match &self.app_state {
-            AppState::Errored(_) => "ISSUE SETING UP\nINSTALLER!",
+            AppState::Errored(_) => "ISSUE SETTING UP\nINSTALLER!",
             _ => "SETTING UP INSTALLER...",
         };
 
