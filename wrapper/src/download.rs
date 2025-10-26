@@ -18,33 +18,32 @@ use crate::java::get_java_zip_path_from_cache_dir;
 use crate::util::TaskError;
 use iced::futures::{SinkExt, Stream, StreamExt};
 use iced::stream::try_channel;
-use iced::Subscription;
+use iced::Task;
 use log::{debug, error, info, warn};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{fs, fs::File, io::Write};
 
-pub fn download_java<T: ToString>(url: T, cache_dir: PathBuf) -> Subscription<AppMessage> {
-    Subscription::run_with_id(
-        "download-java",
-        download_java_task(url.to_string(), cache_dir),
-    )
-    .map(|t| {
-        if let Err(e) = t {
+pub fn download_java_task(url: String, cache_dir: PathBuf) -> Task<AppMessage> {
+    Task::run(download_java_stream(url, cache_dir), move |r| {
+        if let Err(e) = r {
             error!("Error when downloading java: {}", e);
             AppMessage::UpdateState(AppState::Errored(format!("Error downloading java: {}", e)))
         } else {
-            AppMessage::UpdateState(t.unwrap())
+            debug!("Mapping: {}", r.clone().unwrap());
+            AppMessage::UpdateState(r.unwrap())
         }
     })
 }
 
-pub fn download_java_task(
+pub fn download_java_stream(
     url: String,
     cache_dir: PathBuf,
 ) -> impl Stream<Item = Result<AppState, TaskError>> {
-    try_channel(100000, move |mut output| async move {
+    try_channel(10000, move |mut output| async move {
+        output.send(AppState::Downloading(url.clone(), 0.0)).await?;
+
         info!("Starting download from {}", url);
         let download_path = get_java_zip_path_from_cache_dir(&cache_dir);
         info!("Temporary jre zip file: {}", download_path.display());
@@ -80,8 +79,6 @@ pub fn download_java_task(
             .content_length()
             .ok_or(TaskError::NoContentLength())?;
 
-        output.send(AppState::Downloading(url.clone(), 0.0)).await?;
-
         let mut buffer = vec![0u8; total as usize];
         let mut byte_stream = response.bytes_stream();
         let mut downloaded = 0;
@@ -92,14 +89,10 @@ pub fn download_java_task(
             downloaded += bytes.len();
             buffer[previously_downloaded..downloaded].copy_from_slice(&bytes);
             let progress = 100.0 * downloaded as f32 / total as f32;
-            if let Err(e) = output.try_send(AppState::Downloading(url.clone(), progress)) {
-                debug!("Channel full!")
-            }
+            output.send(AppState::Downloading(url.clone(), progress)).await?;
         }
 
-        if let Err(e) = output.try_send(AppState::Downloading(url.clone(), 100f32)) {
-            debug!("Channel full! {}", e)
-        }
+        output.send(AppState::Downloading(url.clone(), 100f32)).await?;
 
         info!("Finished downloading!");
 
@@ -112,9 +105,7 @@ pub fn download_java_task(
         file.write_all(&buffer[..downloaded])?;
 
         info!("Written to file!");
-        if let Err(e) = output.try_send(AppState::DownloadFinished(download_path.clone())) {
-            debug!("Channel full! {}", e)
-        }
+        output.send(AppState::DownloadFinished(download_path.clone())).await?;
         Ok(())
     })
 }

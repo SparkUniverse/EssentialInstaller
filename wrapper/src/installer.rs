@@ -191,7 +191,6 @@ pub fn run_installer_task(
             let res = rx
                 .await
                 .unwrap_or_else(|_| AppState::Errored("Extraction thread dropped".into()));
-            info!("Result 2: {}", res);
             res
         },
         AppMessage::UpdateState,

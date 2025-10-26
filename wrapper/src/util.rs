@@ -23,6 +23,8 @@ impl Display for AppState {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             AppState::Nothing => write!(f, "Nothing"),
+            AppState::FetchingURL => write!(f, "FetchingURL"),
+            AppState::StartDownloading(url) => write!(f, "StartDownloading({})", url),
             AppState::Downloading(url, percent) => write!(f, "Downloading({}, {})", url, percent),
             AppState::DownloadFinished(_) => write!(f, "DownloadFinished"),
             AppState::ExtractingJava(_) => write!(f, "ExtractingJava"),

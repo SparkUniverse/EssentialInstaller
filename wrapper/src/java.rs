@@ -13,13 +13,15 @@
  * other in this repository, all of which is reserved by Essential.
  */
 
+use crate::app::{AppMessage, AppState};
 use crate::process::run_process;
+use iced::Task;
 use log::info;
 use serde::Deserialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub fn get_java_download_url() -> Result<String, String> {
+pub async fn get_java_download_url() -> Result<String, String> {
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     let api = "https://api.azul.com/metadata/v1/zulu/packages/?java_version=17&os=macos&arch=x64&archive_type=zip&java_package_type=jre&javafx_bundled=false&crac_supported=false&crs_supported=false&support_term=lts&distro_version=17&release_status=ga&availability_types=CA&certifications=tck&page=1&page_size=100";
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
@@ -35,15 +37,32 @@ pub fn get_java_download_url() -> Result<String, String> {
 
     info!("Calling API to get java download! {}", api);
 
-    let packages: Vec<Package> = reqwest::blocking::get(api)
+    let packages: Vec<Package> = reqwest::get(api).await
         .map_err(|e| e.to_string())?
-        .json()
+        .json().await
         .map_err(|e| e.to_string())?;
 
     packages
         .first()
         .map(|p| p.download_url.clone())
         .ok_or("No packages returned".to_string())
+}
+
+pub fn fetch_java_url_task() -> Task<AppMessage> {
+    Task::perform(
+        async move {
+            info!("Fetching java url");
+            let url = get_java_download_url().await;
+            info!("Fetched!");
+            if let Err(e) = url {
+                AppState::Errored(format!("Error when fetching Java download URL: {}", e))
+            } else {
+                info!("Successfully fetched Java url: {}", url.clone().unwrap());
+                AppState::StartDownloading(url.unwrap())
+            }
+        },
+        AppMessage::UpdateState,
+    )
 }
 
 pub fn get_java_zip_path_from_cache_dir(cache_dir: &Path) -> PathBuf {
@@ -105,7 +124,7 @@ pub fn find_java(cache_dir: &Path) -> Vec<String> {
                             str_path, file_name
                         ))
                     }
-                }     
+                }
             });
     }
 

@@ -13,10 +13,9 @@
  * other in this repository, all of which is reserved by Essential.
  */
 
-use crate::download::download_java;
 use crate::file::extract_java_task;
 use crate::installer::{run_installer_task};
-use crate::java::get_java_executable_in_downloaded_jre;
+use crate::java::{fetch_java_url_task, get_java_executable_in_downloaded_jre};
 use crate::logging::get_logging_file_from_temp_directory;
 use crate::{fonts, WrapperInfo, BRAND};
 use arboard::Clipboard;
@@ -30,12 +29,12 @@ use iced::window::Mode;
 use iced::{
     color,
     widget::{progress_bar, text},
-    window, Alignment, Background, Border, Color, Element, Length, Padding, Pixels, Shadow, Size,
-    Subscription, Task, Vector,
+    window, Alignment, Background, Border, Color, Element, Length, Padding, Pixels, Shadow, Size, Task, Vector,
 };
 use log::{debug, error, warn};
 use std::fs::read_to_string;
 use std::path::PathBuf;
+use crate::download::download_java_task;
 
 pub fn start_app(app: WrapperApp, decorations: bool) {
     iced::application(
@@ -56,7 +55,6 @@ pub fn start_app(app: WrapperApp, decorations: bool) {
             .ok(),
         ..Default::default()
     })
-    .subscription(WrapperApp::subscription)
     .theme(move |_| AppTheme::default())
     .run_with(|| WrapperApp::new(app))
     .unwrap();
@@ -72,6 +70,8 @@ pub struct WrapperApp {
 pub enum AppState {
     #[default]
     Nothing,
+    FetchingURL,
+    StartDownloading(String),
     Downloading(String, f32),
     DownloadFinished(PathBuf),
     ExtractingJava(PathBuf),
@@ -94,7 +94,7 @@ static BODY_TEXT_SIZE: Pixels = Pixels(16.);
 
 impl WrapperApp {
     fn new(flags: WrapperApp) -> (WrapperApp, Task<AppMessage>) {
-        (flags, fonts::load_fonts())
+        (flags, Task::batch(vec![fonts::load_fonts(), fetch_java_url_task()]))
     }
 
     fn update(&mut self, message: AppMessage) -> Task<AppMessage> {
@@ -164,6 +164,10 @@ impl WrapperApp {
                 let state = self.app_state.clone();
                 window::get_oldest().and_then(move |id| match &state {
                     AppState::Downloading(_, _) => window::change_mode(id, Mode::Windowed),
+                    AppState::StartDownloading(url) => Task::batch(vec![
+                        window::change_mode(id, Mode::Windowed),
+                        download_java_task(url.clone(), cache_dir.clone()),
+                    ]),
                     AppState::ExtractingJava(download_path) => Task::batch(vec![
                         window::change_mode(id, Mode::Windowed),
                         extract_java_task(cache_dir.clone(), download_path.clone()),
@@ -286,15 +290,6 @@ impl WrapperApp {
             .into()
     }
 
-    fn subscription(&self) -> Subscription<AppMessage> {
-        debug!("Getting subscription {}", self.app_state);
-        match &self.app_state {
-            AppState::Downloading(url, _) => {
-                download_java(url.clone(), self.wrapper_info.cache_dir.clone())
-            }
-            _ => Subscription::none(),
-        }
-    }
 }
 
 // Visual stuff

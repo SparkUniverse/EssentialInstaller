@@ -19,7 +19,7 @@ use crate::{app, WrapperInfo, BRAND};
 use app::AppState;
 use iced::futures::channel::oneshot;
 use iced::Task;
-use log::{info, warn};
+use log::{debug, info, warn};
 use std::fs::File;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -96,8 +96,10 @@ pub fn extract_zip(zip_path: PathBuf, target_path: PathBuf) -> ZipResult<()> {
 }
 
 pub fn extract_java_task(cache_dir: PathBuf, download_path: PathBuf) -> Task<AppMessage> {
+    debug!("Extracting java task requested.");
     Task::perform(
         async move {
+            info!("Extracting java...");
             let (tx, rx) = oneshot::channel();
             std::thread::spawn(move || {
                 let extract_path = get_java_extract_folder_from_cache_dir(&cache_dir);
@@ -105,6 +107,7 @@ pub fn extract_java_task(cache_dir: PathBuf, download_path: PathBuf) -> Task<App
                 let res = extract_zip(download_path, extract_path)
                     .map(|_| AppState::ExtractFinished)
                     .unwrap_or_else(|e| AppState::Errored(format!("Error extracting java: {e}")));
+                info!("Finished extracting java! {}", res);
                 let _ = tx.send(res);
             });
             rx.await.unwrap_or_else(|_| AppState::Errored("Extraction thread dropped".into()))
