@@ -24,6 +24,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{fs, fs::File, io::Write};
+use iced::futures::channel::mpsc::Sender;
 
 pub fn download_java_task(url: String, cache_dir: PathBuf) -> Task<AppMessage> {
     Task::run(download_java_stream(url, cache_dir), move |r| {
@@ -41,7 +42,7 @@ pub fn download_java_stream(
     url: String,
     cache_dir: PathBuf,
 ) -> impl Stream<Item = Result<AppState, TaskError>> {
-    try_channel(10000, move |mut output| async move {
+    try_channel(10000, move |mut output: Sender<AppState>| async move {
         output.send(AppState::Downloading(url.clone(), 0.0)).await?;
 
         info!("Starting download from {}", url);
@@ -97,7 +98,7 @@ pub fn download_java_stream(
         info!("Finished downloading!");
 
         let mut file = File::create(download_path.clone()).map_err(|e| {
-            TaskError::IOError("Error creating the download file!".to_string(), Arc::new(e))
+            TaskError::IOError(format!("Error creating the download file! {}", download_path.clone().display()), Arc::new(e))
         })?;
 
         info!("File created!");

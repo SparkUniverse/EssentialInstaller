@@ -14,31 +14,39 @@
  */
 
 use crate::file::extract_java_task;
-use crate::installer::{run_installer_task};
+use crate::installer::run_installer_task;
 use crate::java::{fetch_java_url_task, get_java_executable_in_downloaded_jre};
 use crate::logging::get_logging_file_from_temp_directory;
 use crate::{fonts, WrapperInfo, BRAND};
 use arboard::Clipboard;
 use iced::alignment::{Horizontal, Vertical};
-use iced::application::{Appearance, DefaultStyle};
+use crate::download::download_java_task;
+use iced::theme::{Base, Palette, Style};
 use iced::widget::button::Status;
 use iced::widget::text::LineHeight;
 use iced::widget::{button, container, Column, Container, Row, Text};
 use iced::window::icon::from_file_data;
 use iced::window::Mode;
 use iced::{
-    color,
+    color, theme,
     widget::{progress_bar, text},
-    window, Alignment, Background, Border, Color, Element, Length, Padding, Pixels, Shadow, Size, Task, Vector,
+    window, Alignment, Background, Border, Color, Element, Length, Padding, Pixels, Shadow, Size,
+    Task, Vector,
 };
 use log::{debug, error, warn};
 use std::fs::read_to_string;
 use std::path::PathBuf;
-use crate::download::download_java_task;
 
 pub fn start_app(app: WrapperApp, decorations: bool) {
     iced::application(
-        move |_: &WrapperApp| format!("{} Installer Wrapper", BRAND),
+        move || {
+            let a = app.clone();
+            if let AppState::Errored(_) = a.app_state {
+                (a, Task::none())
+            } else {
+                (a, Task::batch(vec![fonts::load_fonts(), fetch_java_url_task()]),)
+            }
+        },
         WrapperApp::update,
         WrapperApp::view,
     )
@@ -55,12 +63,12 @@ pub fn start_app(app: WrapperApp, decorations: bool) {
             .ok(),
         ..Default::default()
     })
-    .theme(move |_| AppTheme::default())
-    .run_with(|| WrapperApp::new(app))
+    .theme(|_app: &WrapperApp| <AppTheme as Default>::default())
+    .run()
     .unwrap();
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct WrapperApp {
     pub app_state: AppState,
     pub wrapper_info: WrapperInfo,
@@ -93,10 +101,6 @@ static TITLE_TEXT_SIZE: Pixels = Pixels(38.);
 static BODY_TEXT_SIZE: Pixels = Pixels(16.);
 
 impl WrapperApp {
-    fn new(flags: WrapperApp) -> (WrapperApp, Task<AppMessage>) {
-        (flags, Task::batch(vec![fonts::load_fonts(), fetch_java_url_task()]))
-    }
-
     fn update(&mut self, message: AppMessage) -> Task<AppMessage> {
         debug!("Message: {}", message);
         match message {
@@ -162,25 +166,25 @@ impl WrapperApp {
                 let info = self.wrapper_info.clone();
                 let cache_dir = info.cache_dir.clone();
                 let state = self.app_state.clone();
-                window::get_oldest().and_then(move |id| match &state {
-                    AppState::Downloading(_, _) => window::change_mode(id, Mode::Windowed),
+                window::oldest().and_then(move |id| match &state {
+                    AppState::Downloading(_, _) => window::set_mode(id, Mode::Windowed),
                     AppState::StartDownloading(url) => Task::batch(vec![
-                        window::change_mode(id, Mode::Windowed),
+                        window::set_mode(id, Mode::Windowed),
                         download_java_task(url.clone(), cache_dir.clone()),
                     ]),
                     AppState::ExtractingJava(download_path) => Task::batch(vec![
-                        window::change_mode(id, Mode::Windowed),
+                        window::set_mode(id, Mode::Windowed),
                         extract_java_task(cache_dir.clone(), download_path.clone()),
                     ]),
                     AppState::InstallerRunning(exec) => Task::batch(vec![
-                        window::change_mode(id, Mode::Hidden),
+                        window::set_mode(id, Mode::Hidden),
                         run_installer_task(exec.clone(), info.clone()),
                     ]),
                     AppState::Errored(_) => Task::batch(vec![
-                        window::change_mode(id, Mode::Windowed),
+                        window::set_mode(id, Mode::Windowed),
                         window::toggle_decorations(id),
                     ]),
-                    _ => window::change_mode(id, Mode::Hidden),
+                    _ => window::set_mode(id, Mode::Hidden),
                 })
             }
         }
@@ -289,7 +293,6 @@ impl WrapperApp {
             })
             .into()
     }
-
 }
 
 // Visual stuff
@@ -336,12 +339,24 @@ pub enum TextStyle {
     Warning,
 }
 
-impl DefaultStyle for AppTheme {
-    fn default_style(&self) -> Appearance {
-        Appearance {
+impl Base for AppTheme {
+    fn default(_: theme::Mode) -> Self {
+        <AppTheme as Default>::default()
+    }
+
+    fn mode(&self) -> theme::Mode {
+        theme::Mode::None
+    }
+
+    fn base(&self) -> Style {
+        Style {
             background_color: self.background_color,
             text_color: self.text_color,
         }
+    }
+
+    fn palette(&self) -> Option<Palette> {
+        None
     }
 }
 
@@ -356,6 +371,7 @@ impl container::Catalog for AppTheme {
             background: None,
             border: Border::default(),
             shadow: Shadow::default(),
+            snap: false,
         }
     }
 }
@@ -380,6 +396,7 @@ impl button::Catalog for AppTheme {
                 offset: Vector::new(0., 5.),
                 blur_radius: 10.,
             },
+            snap: false,
         }
     }
 }
