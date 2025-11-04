@@ -13,162 +13,100 @@
  * other in this repository, all of which is reserved by Essential.
  */
 
-use crate::app;
-use crate::app::AppMessage;
+use crate::app::{AppMessage, AppState};
 use crate::java::get_java_zip_path_from_cache_dir;
-use app::AppState;
-use log::{info, warn};
+use crate::util::TaskError;
+use iced::futures::{SinkExt, Stream, StreamExt};
+use iced::stream::try_channel;
+use iced::Task;
+use log::{debug, error, info, warn};
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Duration;
 use std::{fs, fs::File, io::Write};
+use iced::futures::channel::mpsc::Sender;
 
-pub enum State {
-    Ready(String, PathBuf),
-    Downloading {
-        url: String,
-        cache_dir: PathBuf,
-        download_path: PathBuf,
-        file: File,
-        response: reqwest::Response,
-        total: u64,
-        downloaded: u64,
-    },
-    Finished,
-    Error,
+pub fn download_java_task(url: String, cache_dir: PathBuf) -> Task<AppMessage> {
+    Task::run(download_java_stream(url, cache_dir), move |r| {
+        if let Err(e) = r {
+            error!("Error when downloading java: {}", e);
+            AppMessage::UpdateState(AppState::Errored(format!("Error downloading java: {}", e)))
+        } else {
+            debug!("Mapping: {}", r.clone().unwrap());
+            AppMessage::UpdateState(r.unwrap())
+        }
+    })
 }
 
-pub async fn download_java(state: State) -> (AppMessage, State) {
-    match state {
-        State::Ready(url, cache_dir) => {
-            info!("Starting download from {}", url);
-            let download_path = get_java_zip_path_from_cache_dir(&cache_dir);
-            info!("Temporary jre zip file: {}", download_path.display());
+pub fn download_java_stream(
+    url: String,
+    cache_dir: PathBuf,
+) -> impl Stream<Item = Result<AppState, TaskError>> {
+    try_channel(10000, move |mut output: Sender<AppState>| async move {
+        output.send(AppState::Downloading(url.clone(), 0.0)).await?;
 
-            info!("Check if the old file exists");
-            if download_path.try_exists().unwrap_or(false) {
-                info!("Deleting the old file");
-                if let Err(e) = fs::remove_file(download_path.clone()) {
-                    return (
-                        AppMessage::UpdateState(AppState::Errored(format!(
-                            "Error when deleting old JRE zip file: {}",
-                            e
-                        ))),
-                        State::Error,
-                    );
-                }
-            }
+        info!("Starting download from {}", url);
+        let download_path = get_java_zip_path_from_cache_dir(&cache_dir);
+        info!("Temporary jre zip file: {}", download_path.display());
 
-            let file = match File::create(download_path.clone()) {
-                Ok(f) => f,
-                Err(_) => {
-                    return (
-                        AppMessage::UpdateState(AppState::Errored(
-                            "Error creating the download file!".to_string(),
-                        )),
-                        State::Error,
-                    )
-                }
-            };
-            info!("File created!");
-
-            let response = reqwest::get(&url).await;
-
-            match response {
-                Ok(response) => {
-                    info!("Got response {}", response.status());
-
-                    if !response.status().is_success() {
-                        warn!("Non-OK status received as response when downloading!");
-                        warn!(
-                            "Response text: \n{}",
-                            response.text().await.unwrap_or_else(|e| { e.to_string() })
-                        );
-                        return (
-                            AppMessage::UpdateState(AppState::Errored(
-                                "Non-OK status received as response when downloading!".to_string(),
-                            )),
-                            State::Error,
-                        );
-                    }
-
-                    if let Some(total) = response.content_length() {
-                        (
-                            AppMessage::UpdateState(AppState::Downloading(url.clone(), 0f32)),
-                            State::Downloading {
-                                url,
-                                cache_dir,
-                                download_path,
-                                file,
-                                response,
-                                total,
-                                downloaded: 0,
-                            },
-                        )
-                    } else {
-                        (
-                            AppMessage::UpdateState(AppState::Errored(
-                                "Error when downloading! (No content length received)".to_string(),
-                            )),
-                            State::Error,
-                        )
-                    }
-                }
-                Err(e) => {
-                    warn!("Error in response: {}", e);
-                    (
-                        AppMessage::UpdateState(AppState::Errored(format!(
-                            "Error when starting download: {}",
-                            e
-                        ))),
-                        State::Error,
-                    )
-                }
-            }
-        }
-        State::Downloading {
-            url,
-            cache_dir,
-            download_path,
-            mut file,
-            mut response,
-            total,
-            downloaded,
-        } => match response.chunk().await {
-            Ok(Some(chunk)) => {
-                let downloaded = downloaded + chunk.len() as u64;
-                let percentage = (downloaded as f32 / total as f32) * 100.0;
-                if let Err(e) = file.write_all(&chunk) {
-                    return (
-                        AppMessage::UpdateState(AppState::Errored(format!(
-                            "Error when writing the download to file: {}",
-                            e
-                        ))),
-                        State::Error,
-                    );
-                }
-
-                (
-                    AppMessage::UpdateState(AppState::Downloading(url.clone(), percentage)),
-                    State::Downloading {
-                        url,
-                        cache_dir,
-                        download_path,
-                        file,
-                        response,
-                        total,
-                        downloaded,
-                    },
+        info!("Check if the old file exists");
+        if download_path.try_exists().unwrap_or(false) {
+            info!("Deleting the old file");
+            fs::remove_file(download_path.clone()).map_err(|e| {
+                TaskError::IOError(
+                    "Error when deleting old JRE zip file".to_string(),
+                    Arc::new(e),
                 )
-            }
-            Ok(None) => (
-                AppMessage::UpdateState(AppState::DownloadFinished(download_path.clone())),
-                State::Finished,
-            ),
-            Err(e) => (
-                AppMessage::UpdateState(AppState::Errored(format!("Download error: {}", e))),
-                State::Error,
-            ),
-        },
-        State::Finished => iced::futures::future::pending().await,
-        State::Error => iced::futures::future::pending().await,
-    }
+            })?;
+        }
+
+        let client = reqwest::Client::builder()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(120)) // 3 mbit download for 45MB file
+            .build()?;
+
+        let response = client.get(url.clone()).send().await?;
+
+        if !response.status().is_success() {
+            warn!("Non-OK status received as response when downloading!");
+            warn!(
+                "Response text: \n{}",
+                response.text().await.unwrap_or_else(|e| { e.to_string() })
+            );
+            return Err(TaskError::UnsuccessfulResponse());
+        }
+
+        let total = response
+            .content_length()
+            .ok_or(TaskError::NoContentLength())?;
+
+        let mut buffer = vec![0u8; total as usize];
+        let mut byte_stream = response.bytes_stream();
+        let mut downloaded = 0;
+
+        while let Some(next_bytes) = byte_stream.next().await {
+            let bytes = next_bytes?;
+            let previously_downloaded = downloaded;
+            downloaded += bytes.len();
+            buffer[previously_downloaded..downloaded].copy_from_slice(&bytes);
+            let progress = 100.0 * downloaded as f32 / total as f32;
+            output.send(AppState::Downloading(url.clone(), progress)).await?;
+        }
+
+        output.send(AppState::Downloading(url.clone(), 100f32)).await?;
+
+        info!("Finished downloading!");
+
+        let mut file = File::create(download_path.clone()).map_err(|e| {
+            TaskError::IOError(format!("Error creating the download file! {}", download_path.clone().display()), Arc::new(e))
+        })?;
+
+        info!("File created!");
+
+        file.write_all(&buffer[..downloaded])?;
+
+        info!("Written to file!");
+        output.send(AppState::DownloadFinished(download_path.clone())).await?;
+        Ok(())
+    })
 }

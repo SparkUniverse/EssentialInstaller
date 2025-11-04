@@ -13,49 +13,62 @@
  * other in this repository, all of which is reserved by Essential.
  */
 
-use crate::java::get_java_executable_in_downloaded_jre;
+use crate::file::extract_java_task;
+use crate::installer::run_installer_task;
+use crate::java::{fetch_java_url_task, get_java_executable_in_downloaded_jre};
 use crate::logging::get_logging_file_from_temp_directory;
-use crate::{download, file, fonts, installer, WrapperInfo, BRAND};
+use crate::{fonts, WrapperInfo, BRAND};
 use arboard::Clipboard;
 use iced::alignment::{Horizontal, Vertical};
-use iced::border::Radius;
+use crate::download::download_java_task;
+use iced::theme::{Base, Palette, Style};
+use iced::widget::button::Status;
 use iced::widget::text::LineHeight;
 use iced::widget::{button, container, Column, Container, Row, Text};
 use iced::window::icon::from_file_data;
 use iced::window::Mode;
 use iced::{
-    application, color, executor, subscription,
+    color, theme,
     widget::{progress_bar, text},
-    window, Alignment, Application, Background, Border, Color, Command, Element, Length, Padding,
-    Pixels, Settings, Shadow, Size, Subscription, Vector,
+    window, Alignment, Background, Border, Color, Element, Length, Padding, Pixels, Shadow, Size,
+    Task, Vector,
 };
 use log::{debug, error, warn};
-use std::fmt;
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
 pub fn start_app(app: WrapperApp, decorations: bool) {
-    WrapperApp::run(Settings {
-        flags: app,
-        window: window::Settings {
-            size: Size {
-                width: 688.,
-                height: 344.,
-            },
-            position: window::Position::Centered,
-            resizable: false,
-            decorations,
-            icon: from_file_data(include_bytes!("../resources/icon.png"), None)
-                .inspect_err(|e| warn!("Error when loading icon: {}", e))
-                .ok(),
-            ..Default::default()
+    iced::application(
+        move || {
+            let a = app.clone();
+            if let AppState::Errored(_) = a.app_state {
+                (a, Task::none())
+            } else {
+                (a, Task::batch(vec![fonts::load_fonts(), fetch_java_url_task()]),)
+            }
         },
+        WrapperApp::update,
+        WrapperApp::view,
+    )
+    .window(window::Settings {
+        size: Size {
+            width: 688.,
+            height: 344.,
+        },
+        position: window::Position::Centered,
+        resizable: false,
+        decorations,
+        icon: from_file_data(include_bytes!("../resources/icon.png"), None)
+            .inspect_err(|e| warn!("Error when loading icon: {}", e))
+            .ok(),
         ..Default::default()
     })
+    .theme(|_app: &WrapperApp| <AppTheme as Default>::default())
+    .run()
     .unwrap();
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct WrapperApp {
     pub app_state: AppState,
     pub wrapper_info: WrapperInfo,
@@ -65,6 +78,8 @@ pub struct WrapperApp {
 pub enum AppState {
     #[default]
     Nothing,
+    FetchingURL,
+    StartDownloading(String),
     Downloading(String, f32),
     DownloadFinished(PathBuf),
     ExtractingJava(PathBuf),
@@ -85,29 +100,16 @@ pub enum AppMessage {
 static TITLE_TEXT_SIZE: Pixels = Pixels(38.);
 static BODY_TEXT_SIZE: Pixels = Pixels(16.);
 
-impl Application for WrapperApp {
-    type Executor = executor::Default;
-    type Message = AppMessage;
-    type Theme = AppTheme;
-    type Flags = WrapperApp;
-
-    fn new(flags: WrapperApp) -> (WrapperApp, Command<AppMessage>) {
-        (flags, fonts::load_fonts())
-    }
-
-    fn title(&self) -> String {
-        BRAND.to_string() + " Installer Wrapper"
-    }
-
-    fn update(&mut self, message: AppMessage) -> Command<AppMessage> {
+impl WrapperApp {
+    fn update(&mut self, message: AppMessage) -> Task<AppMessage> {
         debug!("Message: {}", message);
         match message {
-            AppMessage::Nothing => Command::none(),
+            AppMessage::Nothing => Task::none(),
             AppMessage::OpenURL(url) => {
                 if let Err(e) = open::that(url) {
                     error!("Got error when opening URL! {}", e)
                 }
-                Command::none()
+                Task::none()
             }
             AppMessage::CopyLogs => {
                 let log_path = get_logging_file_from_temp_directory(&self.wrapper_info.temp_dir);
@@ -130,7 +132,7 @@ impl Application for WrapperApp {
                         .set_text(logs)
                         .inspect_err(|e| warn!("Error when setting clipboard: {}", e));
                 }
-                Command::none()
+                Task::none()
             }
             AppMessage::UpdateState(new_state) => {
                 if let AppState::Downloading(_, progress) = &mut self.app_state {
@@ -144,7 +146,7 @@ impl Application for WrapperApp {
                     self.app_state = new_state
                 }
                 if let AppState::DownloadFinished(download_path) = &mut self.app_state {
-                    self.app_state = AppState::ExtractingJava(download_path.clone())
+                    self.app_state = AppState::ExtractingJava(download_path.clone());
                 }
                 if let AppState::ExtractFinished = &mut self.app_state {
                     self.app_state = if let Some(exec) =
@@ -157,24 +159,38 @@ impl Application for WrapperApp {
                 }
                 debug!("Resulting state: {}", self.app_state);
                 if let AppState::Finished = &mut self.app_state {
-                    return window::close(window::Id::MAIN);
+                    return iced::exit();
                 }
+                // Compiler complained?
 
-                match self.app_state {
-                    AppState::Downloading(_, _) => {
-                        window::change_mode(window::Id::MAIN, Mode::Windowed)
-                    }
-                    AppState::Errored(_) => Command::batch(vec![
-                        window::change_mode(window::Id::MAIN, Mode::Windowed),
-                        window::toggle_decorations(window::Id::MAIN),
+                let info = self.wrapper_info.clone();
+                let cache_dir = info.cache_dir.clone();
+                let state = self.app_state.clone();
+                window::oldest().and_then(move |id| match &state {
+                    AppState::Downloading(_, _) => window::set_mode(id, Mode::Windowed),
+                    AppState::StartDownloading(url) => Task::batch(vec![
+                        window::set_mode(id, Mode::Windowed),
+                        download_java_task(url.clone(), cache_dir.clone()),
                     ]),
-                    _ => window::change_mode(window::Id::MAIN, Mode::Hidden),
-                }
+                    AppState::ExtractingJava(download_path) => Task::batch(vec![
+                        window::set_mode(id, Mode::Windowed),
+                        extract_java_task(cache_dir.clone(), download_path.clone()),
+                    ]),
+                    AppState::InstallerRunning(exec) => Task::batch(vec![
+                        window::set_mode(id, Mode::Hidden),
+                        run_installer_task(exec.clone(), info.clone()),
+                    ]),
+                    AppState::Errored(_) => Task::batch(vec![
+                        window::set_mode(id, Mode::Windowed),
+                        window::toggle_decorations(id),
+                    ]),
+                    _ => window::set_mode(id, Mode::Hidden),
+                })
             }
         }
     }
 
-    fn view(&self) -> Element<AppMessage, AppTheme> {
+    fn view(&'_ self) -> Element<'_, AppMessage, AppTheme> {
         let title_text: &str = match &self.app_state {
             AppState::Errored(_) => "ISSUE SETTING UP\nINSTALLER!",
             _ => "SETTING UP INSTALLER...",
@@ -190,7 +206,7 @@ impl Application for WrapperApp {
             .size(TITLE_TEXT_SIZE)
             .line_height(LineHeight::Absolute(34.into()))
             .font(fonts::TITLE_FONT)
-            .style(title_style);
+            .class(title_style);
 
         let body_text: String = match &self.app_state {
             AppState::Errored(e) => {
@@ -210,7 +226,7 @@ impl Application for WrapperApp {
             .size(BODY_TEXT_SIZE)
             .line_height(LineHeight::Absolute(18.into()))
             .font(fonts::GEIST_REGULAR)
-            .style(TextStyle::Dark);
+            .class(TextStyle::Dark);
 
         let title_and_body_spacing = match &self.app_state {
             AppState::Errored(_) => 12.,
@@ -222,15 +238,15 @@ impl Application for WrapperApp {
                 .spacing(title_and_body_spacing)
                 .width(Length::Fill)
                 .height(Length::FillPortion(2))
-                .align_items(Alignment::Start)
+                .align_x(Alignment::Start)
                 .into();
 
         let bottom_element: Element<AppMessage, AppTheme> = match &self.app_state {
             AppState::Downloading(_, progress) => progress_bar(0.0..=100.0, *progress).into(),
             AppState::Errored(_) => {
                 let support_text = text("Contact Support")
-                    .vertical_alignment(Vertical::Center)
-                    .horizontal_alignment(Horizontal::Center)
+                    .align_y(Vertical::Center)
+                    .align_x(Horizontal::Center)
                     .font(fonts::GEIST_SEMIBOLD);
                 let support_button = button(support_text)
                     .on_press(AppMessage::OpenURL(
@@ -238,20 +254,20 @@ impl Application for WrapperApp {
                     ))
                     .width(214)
                     .height(48)
-                    .style(ButtonStyle::Highlight);
+                    .class(ButtonStyle::Highlight);
 
                 let log_text = text("Copy Log")
-                    .vertical_alignment(Vertical::Center)
-                    .horizontal_alignment(Horizontal::Center)
+                    .align_y(Vertical::Center)
+                    .align_x(Horizontal::Center)
                     .font(fonts::GEIST_SEMIBOLD);
                 let log_button = button(log_text)
                     .on_press(AppMessage::CopyLogs)
                     .width(214)
                     .height(48)
-                    .style(ButtonStyle::Default);
+                    .class(ButtonStyle::Default);
 
                 Row::with_children(vec![support_button.into(), log_button.into()])
-                    .align_items(Alignment::Start)
+                    .align_y(Alignment::Start)
                     .spacing(16)
                     .into()
             }
@@ -277,8 +293,24 @@ impl Application for WrapperApp {
             })
             .into()
     }
+}
 
-    fn theme(&self) -> Self::Theme {
+// Visual stuff
+
+#[derive(Debug, Clone)]
+pub struct AppTheme {
+    background_color: Color,
+    text_color: Color,
+    text_dark_color: Color,
+    text_warning_color: Color,
+    button_color: Color,
+    button_highlight_color: Color,
+    progress_bar_color: Color,
+    progress_bar_background_color: Color,
+}
+
+impl Default for AppTheme {
+    fn default() -> Self {
         AppTheme {
             background_color: Color::BLACK,
             text_color: color!(0xE3F5FF),
@@ -290,41 +322,6 @@ impl Application for WrapperApp {
             progress_bar_background_color: color!(0x1A2024),
         }
     }
-
-    fn subscription(&self) -> Subscription<AppMessage> {
-        match &self.app_state {
-            AppState::Downloading(url, _) => subscription::unfold(
-                "download",
-                download::State::Ready(url.clone(), self.wrapper_info.cache_dir.clone()),
-                download::download_java,
-            ),
-            AppState::ExtractingJava(download_path) => subscription::unfold(
-                "extract",
-                file::State::Extract(self.wrapper_info.cache_dir.clone(), download_path.clone()),
-                file::extract_java,
-            ),
-            AppState::InstallerRunning(java_executable) => subscription::unfold(
-                "run",
-                installer::State::Run(java_executable.clone(), self.wrapper_info.clone()),
-                installer::run_installer,
-            ),
-            _ => Subscription::none(),
-        }
-    }
-}
-
-// Visual stuff
-
-#[derive(Debug, Clone, Default)]
-pub struct AppTheme {
-    background_color: Color,
-    text_color: Color,
-    text_dark_color: Color,
-    text_warning_color: Color,
-    button_color: Color,
-    button_highlight_color: Color,
-    progress_bar_color: Color,
-    progress_bar_background_color: Color,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -342,56 +339,77 @@ pub enum TextStyle {
     Warning,
 }
 
-impl application::StyleSheet for AppTheme {
-    type Style = ();
+impl Base for AppTheme {
+    fn default(_: theme::Mode) -> Self {
+        <AppTheme as Default>::default()
+    }
 
-    fn appearance(&self, _style: &Self::Style) -> application::Appearance {
-        application::Appearance {
+    fn mode(&self) -> theme::Mode {
+        theme::Mode::None
+    }
+
+    fn base(&self) -> Style {
+        Style {
             background_color: self.background_color,
             text_color: self.text_color,
         }
     }
+
+    fn palette(&self) -> Option<Palette> {
+        None
+    }
 }
 
-impl container::StyleSheet for AppTheme {
-    type Style = ();
+impl container::Catalog for AppTheme {
+    type Class<'a> = ();
 
-    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
-        container::Appearance {
+    fn default<'a>() -> Self::Class<'a> {}
+
+    fn style(&self, _class: &Self::Class<'_>) -> container::Style {
+        container::Style {
             text_color: None,
             background: None,
-            border: Border::with_radius(0),
+            border: Border::default(),
             shadow: Shadow::default(),
+            snap: false,
         }
     }
 }
 
-impl button::StyleSheet for AppTheme {
-    type Style = ButtonStyle;
+impl button::Catalog for AppTheme {
+    type Class<'a> = ButtonStyle;
 
-    fn active(&self, style: &Self::Style) -> button::Appearance {
-        button::Appearance {
-            shadow_offset: Vector::new(0., 5.),
+    fn default<'a>() -> Self::Class<'a> {
+        ButtonStyle::Default
+    }
+
+    fn style(&self, style: &Self::Class<'_>, _status: Status) -> button::Style {
+        button::Style {
             background: Some(Background::Color(match style {
                 ButtonStyle::Default => self.button_color,
                 ButtonStyle::Highlight => self.button_highlight_color,
             })),
             text_color: self.text_color,
-            border: Border::with_radius(0),
+            border: Border::default(),
             shadow: Shadow {
                 color: Color::BLACK,
                 offset: Vector::new(0., 5.),
                 blur_radius: 10.,
             },
+            snap: false,
         }
     }
 }
 
-impl text::StyleSheet for AppTheme {
-    type Style = TextStyle;
+impl text::Catalog for AppTheme {
+    type Class<'a> = TextStyle;
 
-    fn appearance(&self, style: Self::Style) -> text::Appearance {
-        text::Appearance {
+    fn default<'a>() -> Self::Class<'a> {
+        TextStyle::Default
+    }
+
+    fn style(&self, style: &Self::Class<'_>) -> text::Style {
+        text::Style {
             color: Some(match style {
                 TextStyle::Default => self.text_color,
                 TextStyle::Dark => self.text_dark_color,
@@ -401,42 +419,16 @@ impl text::StyleSheet for AppTheme {
     }
 }
 
-impl progress_bar::StyleSheet for AppTheme {
-    type Style = ();
+impl progress_bar::Catalog for AppTheme {
+    type Class<'a> = ();
 
-    fn appearance(&self, _style: &Self::Style) -> progress_bar::Appearance {
-        progress_bar::Appearance {
+    fn default<'a>() -> Self::Class<'a> {}
+
+    fn style(&self, _class: &Self::Class<'_>) -> progress_bar::Style {
+        progress_bar::Style {
             background: Background::Color(self.progress_bar_background_color),
             bar: Background::Color(self.progress_bar_color),
-            border_radius: Radius::default(),
-        }
-    }
-}
-
-// Util
-
-impl fmt::Display for AppState {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            AppState::Nothing => write!(f, "Nothing"),
-            AppState::Downloading(url, percent) => write!(f, "Downloading({}, {})", url, percent),
-            AppState::DownloadFinished(_) => write!(f, "DownloadFinished"),
-            AppState::ExtractingJava(_) => write!(f, "ExtractingJava"),
-            AppState::ExtractFinished => write!(f, "ExtractFinished"),
-            AppState::InstallerRunning(_) => write!(f, "InstallerRunning"),
-            AppState::Finished => write!(f, "Finished"),
-            AppState::Errored(e) => write!(f, "Errored({})", e),
-        }
-    }
-}
-
-impl fmt::Display for AppMessage {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            AppMessage::Nothing => write!(f, "Nothing"),
-            AppMessage::CopyLogs => write!(f, "CopyLogs"),
-            AppMessage::UpdateState(state) => write!(f, "UpdateState({})", state),
-            AppMessage::OpenURL(url) => write!(f, "OpenURL({})", url),
+            border: Default::default(),
         }
     }
 }

@@ -12,14 +12,15 @@
  * commercialize, or otherwise exploit the works in this file or any
  * other in this repository, all of which is reserved by Essential.
  */
-
 use crate::file::delete_temp_dir;
 use crate::java::test_java;
 use crate::process::run_process;
 use crate::{app, show_error, WrapperInfo, VERSION};
 use app::{AppMessage, AppState};
+use iced::{Task};
 use log::{error, info, warn};
 use std::process::exit;
+use iced::futures::channel::oneshot;
 
 pub enum InstallerExitCode {
     Success,
@@ -150,62 +151,48 @@ pub fn get_installer_path(_wrapper_info: &WrapperInfo) -> Option<String> {
     path.into_os_string().into_string().ok()
 }
 
-pub enum State {
-    Run(String, WrapperInfo),
-    Finished,
-}
-
-pub async fn run_installer(state: State) -> (AppMessage, State) {
-    match state {
-        State::Run(java_executable, wrapper_info) => {
-            match try_run_installer(&java_executable, &wrapper_info) {
-                Ok(ex) => match ex {
-                    InstallerExitCode::Success => {
-                        (AppMessage::UpdateState(AppState::Finished), State::Finished)
-                    }
-                    InstallerExitCode::UnknownError => {
-                        error!("Unknown error when running installer!");
-                        (
-                            AppMessage::UpdateState(AppState::Errored(
-                                "Unknown error!".to_string(),
-                            )),
-                            State::Finished,
-                        )
-                    }
-                    InstallerExitCode::NoOpenGl => {
-                        error!("No OpenGL found when running installer!");
-                        (
-                            AppMessage::UpdateState(AppState::Errored(
-                                "No OpenGL found!".to_string(),
-                            )),
-                            State::Finished,
-                        )
-                    }
-                    InstallerExitCode::UnsupportedPath => {
-                        error!("Launcher found an unsupported path!");
-                        (
-                            AppMessage::UpdateState(AppState::Errored(
-                                "Launcher found an unsupported path!".to_string(),
-                            )),
-                            State::Finished,
-                        )
-                    }
-                },
-                Err(e) => {
-                    let error = match e {
-                        InstallerRunError::JavaFailed => "Java test failed!".to_string(),
-                        InstallerRunError::UnknownExitCode(c) => {
-                            format!("Unknown installer exit code: {}", c)
+pub fn run_installer_task(
+    java_executable: String,
+    wrapper_info: WrapperInfo,
+) -> Task<AppMessage> {
+    Task::perform(
+        async move {
+            let (tx, rx) = oneshot::channel();
+            std::thread::spawn(move || {
+                let state = match try_run_installer(&java_executable, &wrapper_info) {
+                    Ok(ex) => match ex {
+                        InstallerExitCode::Success => AppState::Finished,
+                        InstallerExitCode::UnknownError => {
+                            error!("Unknown error when running installer!");
+                            AppState::Errored("Unknown error!".to_string())
                         }
-                        InstallerRunError::Other => "Unknown error!".to_string(),
-                    };
-                    (
-                        AppMessage::UpdateState(AppState::Errored(error)),
-                        State::Finished,
-                    )
-                }
-            }
-        }
-        State::Finished => iced::futures::future::pending().await,
-    }
+                        InstallerExitCode::NoOpenGl => {
+                            error!("No OpenGL found when running installer!");
+                            AppState::Errored("No OpenGL found!".to_string())
+                        }
+                        InstallerExitCode::UnsupportedPath => {
+                            error!("Launcher found an unsupported path!");
+                            AppState::Errored("Launcher found an unsupported path!".to_string())
+                        }
+                    },
+                    Err(e) => {
+                        let error = match e {
+                            InstallerRunError::JavaFailed => "Java test failed!".to_string(),
+                            InstallerRunError::UnknownExitCode(c) => {
+                                format!("Unknown installer exit code: {}", c)
+                            }
+                            InstallerRunError::Other => "Unknown error!".to_string(),
+                        };
+                        AppState::Errored(error)
+                    }
+                };
+                let _ = tx.send(state);
+            });
+            let res = rx
+                .await
+                .unwrap_or_else(|_| AppState::Errored("Extraction thread dropped".into()));
+            res
+        },
+        AppMessage::UpdateState,
+    )
 }

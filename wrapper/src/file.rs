@@ -17,12 +17,16 @@ use crate::app::AppMessage;
 use crate::java::get_java_extract_folder_from_cache_dir;
 use crate::{app, WrapperInfo, BRAND};
 use app::AppState;
-use log::{error, info, warn};
+use iced::futures::channel::oneshot;
+use iced::Task;
+use log::{debug, info, warn};
 use std::fs::File;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{env, fs};
-use zip_extract::ZipExtractError;
+use zip::read::root_dir_common_filter;
+use zip::result::ZipResult;
+use zip::ZipArchive;
 
 const NONEXISTANT_PATH_NAME: &str = "this-directory-does-not-exist";
 
@@ -73,11 +77,11 @@ fn try_create_folder(unique: bool, path_option: Option<PathBuf>) -> Option<PathB
 pub fn delete_temp_dir(wrapper_info: &WrapperInfo) {
     if wrapper_info.temp_dir.exists() && !wrapper_info.temp_dir.ends_with(NONEXISTANT_PATH_NAME) {
         let _ = fs::remove_dir_all(wrapper_info.temp_dir.clone())
-            .inspect_err(|e| { warn!("Error deleting temp dir: {}", e) });
+            .inspect_err(|e| warn!("Error deleting temp dir: {}", e));
     }
 }
 
-pub fn extract_zip(zip_path: PathBuf, target_path: PathBuf) -> Result<(), ZipExtractError> {
+pub fn extract_zip(zip_path: PathBuf, target_path: PathBuf) -> ZipResult<()> {
     info!(
         "Extracting {} to {}",
         zip_path.display(),
@@ -86,36 +90,28 @@ pub fn extract_zip(zip_path: PathBuf, target_path: PathBuf) -> Result<(), ZipExt
     if target_path.try_exists()? {
         fs::remove_dir_all(target_path.clone())?;
     }
-    
-    let file = File::open(zip_path).map_err(ZipExtractError::Io)?;
+    let file = File::open(zip_path)?;
 
-    zip_extract::extract(file, target_path.as_path(), true)
+    ZipArchive::new(file)?.extract_unwrapped_root_dir(target_path, root_dir_common_filter)
 }
 
-pub enum State {
-    Extract(PathBuf, PathBuf),
-    Finished,
-}
-
-pub async fn extract_java(state: State) -> (AppMessage, State) {
-    match state {
-        State::Extract(cache_dir, download_path) => {
-            let extract_path = get_java_extract_folder_from_cache_dir(&cache_dir);
-            info!("Temporary jre folder: {}", extract_path.display());
-            if let Err(e) = extract_zip(download_path.clone(), extract_path.clone()) {
-                error!("Error when extracting zip: {}", e);
-                (
-                    AppMessage::UpdateState(AppState::Errored("Error extracting zip!".to_string())),
-                    State::Finished,
-                )
-            } else {
-                info!("Successfully extracted zip!");
-                (
-                    AppMessage::UpdateState(AppState::ExtractFinished),
-                    State::Finished,
-                )
-            }
-        }
-        State::Finished => iced::futures::future::pending().await,
-    }
+pub fn extract_java_task(cache_dir: PathBuf, download_path: PathBuf) -> Task<AppMessage> {
+    debug!("Extracting java task requested.");
+    Task::perform(
+        async move {
+            info!("Extracting java...");
+            let (tx, rx) = oneshot::channel();
+            std::thread::spawn(move || {
+                let extract_path = get_java_extract_folder_from_cache_dir(&cache_dir);
+                info!("Temporary jre folder: {}", extract_path.display());
+                let res = extract_zip(download_path, extract_path)
+                    .map(|_| AppState::ExtractFinished)
+                    .unwrap_or_else(|e| AppState::Errored(format!("Error extracting java: {e}")));
+                info!("Finished extracting java! {}", res);
+                let _ = tx.send(res);
+            });
+            rx.await.unwrap_or_else(|_| AppState::Errored("Extraction thread dropped".into()))
+        },
+        AppMessage::UpdateState,
+    )
 }

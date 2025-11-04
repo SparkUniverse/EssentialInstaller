@@ -19,7 +19,7 @@
 use crate::app::{start_app, AppState, WrapperApp};
 use crate::file::{delete_temp_dir, get_cache_directory, get_invalid_path, get_temp_directory};
 use crate::installer::run_installer_with_permissive_error_handling;
-use crate::java::{find_java, get_java_download_url};
+use crate::java::find_java;
 use crate::logging::setup_logging;
 use log::info;
 use std::iter::Iterator;
@@ -35,6 +35,7 @@ mod java;
 mod logging;
 mod macros;
 mod process;
+mod util;
 
 pub const BRAND: &str = include_str!("../resources/info/brand.txt");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -84,18 +85,9 @@ pub fn main() {
 
     info!("Downloading java");
 
-    let url = get_java_download_url()
-        .inspect_err(|e| {
-            show_error!(
-                format!("Error when fetching Java download URL: {}", e),
-                wrapper_info.clone()
-            );
-        })
-        .unwrap();
-
     start_app(
         WrapperApp {
-            app_state: AppState::Downloading(url, 0.),
+            app_state: AppState::FetchingURL,
             wrapper_info: wrapper_info.clone(),
         },
         false,
