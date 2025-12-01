@@ -80,7 +80,6 @@ fun main(args: Array<String>) {
                 }
 
                 Launchers.detectLaunchers()
-                ModManager.loadModVersionsAndMetadata()
             }
 
             launch {
@@ -92,6 +91,7 @@ fun main(args: Array<String>) {
 
             // Less important stuff that can refresh as the installer is opening
             launch {
+                ModManager.loadModVersionsAndMetadata()
                 MCVersion.refreshKnownMcVersions() // First, we load known MC versions
                 ModloaderType.entries.forEach { it.modloader?.setup() } // Then we load modloader versions
                 Launchers.loadInstallations() // And then we load the installations

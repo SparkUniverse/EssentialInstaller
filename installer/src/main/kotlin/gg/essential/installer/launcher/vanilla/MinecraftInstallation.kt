@@ -37,7 +37,7 @@ class MinecraftInstallation(
     }
 
     companion object {
-        val comparator = compareByDescending<MinecraftInstallation> { it.isSupported }
+        val comparator = compareByDescending<MinecraftInstallation> { it.isSupported.getUntracked() }
             .thenByDescending { it.data.lastUsed }
     }
 

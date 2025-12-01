@@ -15,6 +15,7 @@
 
 package gg.essential.installer.launcher
 
+import gg.essential.elementa.unstable.state.v2.memo
 import gg.essential.installer.minecraft.MCVersion
 import gg.essential.installer.mod.ModManager
 import gg.essential.installer.modloader.ModloaderInfo
@@ -43,6 +44,8 @@ abstract class Installation(
         ModloaderType.UNKNOWN -> if (mcVersion == null) "Unknown" else "$mcVersionString Unknown" // Prevent 'Unknown Unknown'
     }
 
-    val isSupported = mcVersion != null && (modloaderInfo.type.modloader != null || modloaderInfo.type == ModloaderType.NONE_MODERN) && ModManager.getAvailableMCVersions().getUntracked().contains(mcVersion)
+    val isSupported = memo {
+        mcVersion != null && (modloaderInfo.type.modloader != null || modloaderInfo.type == ModloaderType.NONE_MODERN) && ModManager.getAvailableMCVersions()().contains(mcVersion)
+    }
 
 }

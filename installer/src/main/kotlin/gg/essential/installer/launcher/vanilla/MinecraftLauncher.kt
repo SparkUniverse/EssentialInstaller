@@ -16,7 +16,7 @@
 package gg.essential.installer.launcher.vanilla
 
 import com.sun.jna.platform.win32.WinReg
-import gg.essential.elementa.unstable.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.memo
 import gg.essential.elementa.unstable.state.v2.mutableStateOf
 import gg.essential.elementa.unstable.state.v2.toListState
 import gg.essential.installer.install.InstallSteps
@@ -82,10 +82,11 @@ class MinecraftLauncher(
     private var profilesFileContents = ""
     private var profilesFileJsonObject = JsonObject(emptyMap())
 
-    override val installations = profilesFile.map { profilesFile ->
-        profilesFile.profiles.entries.mapNotNull {
+    override val installations = memo {
+        profilesFile().profiles.entries.mapNotNull {
             try {
-                MinecraftInstallation(it.key, this, it.value)
+                MinecraftInstallation(it.key, this@MinecraftLauncher, it.value)
+                    .also { it.isSupported() } // Register observer for support change
             } catch (e: Exception) {
                 logger.warn("Error when parsing ${it.key}: ${it.value}!", e)
                 null

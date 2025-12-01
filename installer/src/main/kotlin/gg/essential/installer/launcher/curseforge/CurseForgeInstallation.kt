@@ -29,7 +29,7 @@ class CurseForgeInstallation(
     }
 
     companion object {
-        val comparator = compareByDescending<CurseForgeInstallation> { it.isSupported }
+        val comparator = compareByDescending<CurseForgeInstallation> { it.isSupported.getUntracked() }
             .thenByDescending { it.instance.lastPlayed }
     }
 

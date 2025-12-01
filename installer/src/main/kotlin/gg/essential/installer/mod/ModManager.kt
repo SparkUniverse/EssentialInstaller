@@ -62,7 +62,7 @@ import kotlin.io.path.pathString
  */
 object ModManager {
 
-    private val availableVersions = mutableStateOf(mapOf<MCVersion, Map<ModloaderType, ModVersions>>())
+    private val availableVersions = mutableStateOf(mapOf<MCVersion, Map<ModloaderType, ModVersions?>>())
     private val modMetadata = mutableStateOf<ModMetadata?>(null)
 
     private val json = Json {
@@ -88,7 +88,7 @@ object ModManager {
 
         val versionsMap = when (dataProviders.modVersionProviderStrategy) {
             DataProviderStrategy.ONLY_IF_ERROR -> {
-                var map = mapOf<MCVersion, Map<ModloaderType, ModVersions>>()
+                var map = mapOf<MCVersion, Map<ModloaderType, ModVersions?>>()
                 for (provider in dataProviders.modVersionProviders) {
                     try {
                         map = provider.getAvailableModVersions()
@@ -101,7 +101,7 @@ object ModManager {
             }
 
             DataProviderStrategy.COMBINE_WITH_PRIORITY -> {
-                val map = mutableMapOf<MCVersion, MutableMap<ModloaderType, ModVersions>>()
+                val map = mutableMapOf<MCVersion, MutableMap<ModloaderType, ModVersions?>>()
                 for (provider in dataProviders.modVersionProviders) {
                     try {
                         val versions = provider.getAvailableModVersions()
@@ -169,7 +169,7 @@ object ModManager {
 
         availableVersions.set(versionsMap)
         modMetadata.set(metadata)
-
+        logger.info("Loaded mod versions and metadata!")
     }
 
     fun getPromotedMCVersions() = modMetadata.map { it?.promotedMCVersions ?: listOf() }.toListState()
