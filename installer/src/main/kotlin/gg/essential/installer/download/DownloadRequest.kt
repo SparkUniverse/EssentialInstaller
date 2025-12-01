@@ -15,8 +15,8 @@
 
 package gg.essential.installer.download
 
-import gg.essential.elementa.state.v2.mutableStateOf
-import gg.essential.elementa.state.v2.stateOf
+import gg.essential.elementa.unstable.state.v2.mutableStateOf
+import gg.essential.elementa.unstable.state.v2.stateOf
 import gg.essential.installer.download.util.DownloadInfo
 import gg.essential.installer.install.StandaloneInstallStep
 import gg.essential.installer.platform.Platform

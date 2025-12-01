@@ -15,7 +15,7 @@
 
 package gg.essential.installer.gui.component
 
-import gg.essential.elementa.layoutdsl.*
+import gg.essential.elementa.unstable.layoutdsl.*
 
 fun Modifier.alignTopLeft(topPadding: Float = 0f, leftPadding: Float = 0f) = this then Modifier.alignHorizontal(Alignment.Start(leftPadding)).alignVertical(Alignment.Start(topPadding))
 

@@ -16,7 +16,7 @@
 package gg.essential.installer.gui.component
 
 import gg.essential.elementa.effects.Effect
-import gg.essential.elementa.layoutdsl.*
+import gg.essential.elementa.unstable.layoutdsl.*
 
 // Copied from Essential
 

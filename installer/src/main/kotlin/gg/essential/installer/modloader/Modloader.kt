@@ -15,10 +15,10 @@
 
 package gg.essential.installer.modloader
 
-import gg.essential.elementa.state.v2.MutableState
-import gg.essential.elementa.state.v2.State
-import gg.essential.elementa.state.v2.combinators.map
-import gg.essential.elementa.state.v2.mutableStateOf
+import gg.essential.elementa.unstable.state.v2.MutableState
+import gg.essential.elementa.unstable.state.v2.State
+import gg.essential.elementa.unstable.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.mutableStateOf
 import gg.essential.installer.install.InstallSteps
 import gg.essential.installer.launcher.InstallInfo
 import gg.essential.installer.launcher.prism.MMCPack

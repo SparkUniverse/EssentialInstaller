@@ -15,8 +15,8 @@
 
 package gg.essential.installer.gui.page
 
-import gg.essential.elementa.layoutdsl.*
-import gg.essential.elementa.state.v2.stateOf
+import gg.essential.elementa.unstable.layoutdsl.*
+import gg.essential.elementa.unstable.state.v2.stateOf
 import gg.essential.installer.gui.*
 import gg.essential.installer.gui.component.*
 import gg.essential.installer.launchInMainCoroutineScope

@@ -15,9 +15,9 @@
 
 package gg.essential.installer.launcher
 
-import gg.essential.elementa.state.v2.ListState
-import gg.essential.elementa.state.v2.combinators.map
-import gg.essential.elementa.state.v2.toListState
+import gg.essential.elementa.unstable.state.v2.ListState
+import gg.essential.elementa.unstable.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.toListState
 import gg.essential.installer.install.InstallSteps
 import gg.essential.installer.metadata.BRAND
 import gg.essential.installer.minecraft.MCVersion

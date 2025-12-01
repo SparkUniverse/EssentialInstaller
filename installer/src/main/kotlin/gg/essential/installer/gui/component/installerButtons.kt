@@ -15,9 +15,9 @@
 
 package gg.essential.installer.gui.component
 
-import gg.essential.elementa.layoutdsl.*
-import gg.essential.elementa.state.v2.State
-import gg.essential.elementa.state.v2.stateOf
+import gg.essential.elementa.unstable.layoutdsl.*
+import gg.essential.elementa.unstable.state.v2.State
+import gg.essential.elementa.unstable.state.v2.stateOf
 
 fun LayoutScope.topRightButton(
     buttonText: State<String> = stateOf(""),

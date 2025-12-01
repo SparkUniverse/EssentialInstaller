@@ -17,9 +17,9 @@ package gg.essential.installer.launcher.curseforge
 
 import com.sun.jna.platform.win32.Advapi32Util
 import com.sun.jna.platform.win32.WinReg
-import gg.essential.elementa.state.v2.ListState
-import gg.essential.elementa.state.v2.mutableListStateOf
-import gg.essential.elementa.state.v2.setAll
+import gg.essential.elementa.unstable.state.v2.ListState
+import gg.essential.elementa.unstable.state.v2.mutableListStateOf
+import gg.essential.elementa.unstable.state.v2.setAll
 import gg.essential.installer.download.HttpManager
 import gg.essential.installer.download.decode
 import gg.essential.installer.gui.InstallerPalette.MOD_ICON_PATH

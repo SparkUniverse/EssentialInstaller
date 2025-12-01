@@ -23,11 +23,11 @@ import gg.essential.elementa.constraints.*
 import gg.essential.elementa.constraints.animation.*
 import gg.essential.elementa.dsl.*
 import gg.essential.elementa.effects.ScissorEffect
-import gg.essential.elementa.layoutdsl.*
-import gg.essential.elementa.state.v2.combinators.map
-import gg.essential.elementa.state.v2.memo
-import gg.essential.elementa.state.v2.mutableStateOf
-import gg.essential.elementa.util.isInComponentTree
+import gg.essential.elementa.unstable.layoutdsl.*
+import gg.essential.elementa.unstable.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.memo
+import gg.essential.elementa.unstable.state.v2.mutableStateOf
+import gg.essential.elementa.unstable.util.isInComponentTree
 import gg.essential.installer.gui.component.*
 import gg.essential.installer.gui.page.*
 import gg.essential.installer.isDebug
@@ -188,7 +188,7 @@ object PageHandler {
 
     class LayoutDslScreen(
         block: LayoutScope.() -> Unit,
-    ) : WindowScreen(ElementaVersion.V6) {
+    ) : WindowScreen(ElementaVersion.V10) {
         init {
             window.layoutAsBox {
                 block()

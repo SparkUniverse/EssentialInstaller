@@ -19,8 +19,8 @@ import gg.essential.elementa.UIComponent
 import gg.essential.elementa.constraints.*
 import gg.essential.elementa.constraints.resolution.*
 import gg.essential.elementa.dsl.*
-import gg.essential.elementa.layoutdsl.*
-import gg.essential.elementa.state.v2.stateOf
+import gg.essential.elementa.unstable.layoutdsl.*
+import gg.essential.elementa.unstable.state.v2.stateOf
 import gg.essential.elementa.utils.withAlpha
 import gg.essential.installer.gui.*
 import gg.essential.installer.gui.component.*

@@ -16,10 +16,10 @@ repositories {
 
 dependencies {
     // See https://github.com/EssentialGG/Elementa for latest Elementa and UC build numbers
-    val universalCraftVersion = 365
+    val universalCraftVersion = 440
     implementation("gg.essential:universalcraft-standalone:$universalCraftVersion")
 
-    val elementaVersion = 676
+    val elementaVersion = 714
     implementation("gg.essential:elementa:$elementaVersion")
     implementation("gg.essential:elementa-unstable-statev2:$elementaVersion")
     implementation("gg.essential:elementa-unstable-layoutdsl:$elementaVersion")

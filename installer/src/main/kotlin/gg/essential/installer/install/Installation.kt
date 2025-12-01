@@ -15,7 +15,7 @@
 
 package gg.essential.installer.install
 
-import gg.essential.elementa.state.v2.memo
+import gg.essential.elementa.unstable.state.v2.memo
 import gg.essential.installer.logging.Logging
 
 /**

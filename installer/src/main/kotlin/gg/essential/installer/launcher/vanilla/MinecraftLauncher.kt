@@ -16,9 +16,9 @@
 package gg.essential.installer.launcher.vanilla
 
 import com.sun.jna.platform.win32.WinReg
-import gg.essential.elementa.state.v2.combinators.map
-import gg.essential.elementa.state.v2.mutableStateOf
-import gg.essential.elementa.state.v2.toListState
+import gg.essential.elementa.unstable.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.mutableStateOf
+import gg.essential.elementa.unstable.state.v2.toListState
 import gg.essential.installer.install.InstallSteps
 import gg.essential.installer.install.installationStep
 import gg.essential.installer.launcher.Launcher

@@ -21,8 +21,8 @@ import gg.essential.elementa.components.ScrollComponent
 import gg.essential.elementa.events.UIClickEvent
 import gg.essential.elementa.state.BasicState
 import gg.essential.elementa.state.State
-import gg.essential.elementa.state.v2.onChange
-import gg.essential.elementa.state.v2.State as StateV2
+import gg.essential.elementa.unstable.state.v2.onChange
+import gg.essential.elementa.unstable.state.v2.State as StateV2
 
 // Copied from Vigilance
 

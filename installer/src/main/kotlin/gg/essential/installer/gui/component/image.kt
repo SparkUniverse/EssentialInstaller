@@ -16,7 +16,7 @@
 package gg.essential.installer.gui.component
 
 import gg.essential.elementa.components.UIImage
-import gg.essential.elementa.layoutdsl.*
+import gg.essential.elementa.unstable.layoutdsl.*
 import gg.essential.installer.gui.image.*
 
 // Copied from Essential

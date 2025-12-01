@@ -18,7 +18,7 @@ package gg.essential.installer.gui.component
 import gg.essential.elementa.UIComponent
 import gg.essential.elementa.constraints.*
 import gg.essential.elementa.dsl.*
-import gg.essential.elementa.layoutdsl.*
+import gg.essential.elementa.unstable.layoutdsl.*
 import gg.essential.installer.gui.*
 
 fun LayoutScope.bottomRightScroller(
