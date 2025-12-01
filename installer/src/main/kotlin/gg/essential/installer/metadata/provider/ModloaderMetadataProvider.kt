@@ -29,6 +29,7 @@ import kotlinx.serialization.Transient
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNamingStrategy
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.decodeFromStream
@@ -98,6 +99,7 @@ sealed interface ModloaderMetadataProvider {
     companion object {
         private val json = Json {
             ignoreUnknownKeys = true
+            namingStrategy = JsonNamingStrategy.SnakeCase
         }
     }
 

@@ -17,6 +17,10 @@
     ],
     "modMetadataProviders": [
         {
+            "type": "url",
+            "url": "https://mod-metadata.essential.gg/v2/mods/essential/installer/modloaders"
+        },
+        {
             "type": "file",
             "path": "/mod-metadata.json"
         }
