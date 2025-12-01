@@ -1,3 +1,7 @@
+#!/bin/sh
+
+set -oe pipefail
+
 BRAND_LOWERCASE=$(tr '[:upper:]' '[:lower:]' < ../wrapper/resources/info/brand.txt)
 FILE_NAME="$BRAND_LOWERCASE-installer-$VERSION"
 MACOS_FILE_NAME="$FILE_NAME.app.zip"
@@ -9,6 +13,7 @@ echo "macOS: $MACOS_FILE_NAME ($MACOS_CHECKSUM)"
 echo "Windows: $WINDOWS_FILE_NAME ($WINDOWS_CHECKSUM)"
 
 curl -X 'POST' \
+  --fail \
   -u "$RELEASE_USER:$RELEASE_PASSWORD" \
   "https://installer.essential.gg/v1/installer/$VERSION" \
   -H 'accept: application/json' \

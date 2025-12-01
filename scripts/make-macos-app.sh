@@ -1,3 +1,7 @@
+#!/bin/sh
+
+set -oe pipefail
+
 BRAND=$(cat ../wrapper/resources/info/brand.txt)
 APP_NAME="$BRAND Installer"
 APP_ID=$(cat ../wrapper/resources/info/macos-app-id.txt)

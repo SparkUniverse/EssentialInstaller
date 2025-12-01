@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -oe pipefail
+
 # Provided by CI, can be uncommented if manually signing
 #IDENTITY="identity"
 #USERNAME="apple-id email"

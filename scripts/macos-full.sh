@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -oe pipefail
+
 cd installer || exit
 
 echo "Compiling installer JAR"
