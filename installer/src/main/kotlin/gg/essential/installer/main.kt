@@ -69,6 +69,7 @@ fun main(args: Array<String>) {
         runUniversalCraft("", scaleFactor * width, scaleFactor * height, resizable) { window ->
             mainCoroutineScope = this
 
+            Fonts.initFonts()
             // More important stuff we need loaded before opening the installer
             coroutineScope {
                 MetadataManager.loadDataProviders()
