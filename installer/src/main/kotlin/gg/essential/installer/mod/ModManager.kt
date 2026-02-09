@@ -37,6 +37,9 @@ import gg.essential.installer.minecraft.MCVersion
 import gg.essential.installer.modloader.Modloader
 import gg.essential.installer.modloader.ModloaderType
 import gg.essential.installer.platform.Platform
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -78,14 +81,25 @@ object ModManager {
             MCVersion.refreshKnownMcVersions() // Hack, since this is otherwise refreshed after this method...
             val version = ModVersion("", "", DownloadInfo("", "", true))
             val map = Modloader.entries.associate { it.type to ModVersions(version, null, listOf(version)) }
-            availableVersions.set(MCVersion.knownVersions.filter { it >= MCVersion(8, 9) }.getUntracked().associateWith { map })
+            availableVersions.set(MCVersion.knownVersions.filter { it >= MCVersion(1, 8, 9) }.getUntracked().associateWith { map })
             return
         }
 
+        coroutineScope {
+            awaitAll(
+                async { loadVersions() },
+                async { loadMetadata() },
+            )
+        }
+
+        if (availableVersions.getUntracked().isEmpty()) throw IllegalStateException("No mod versions provider successfully loaded!")
+
+        logger.info("Loaded mod versions and metadata!")
+    }
+
+    private suspend fun loadVersions() {
         val dataProviders = MetadataManager.dataProviders
-
         logger.debug("Version provider: {}", dataProviders.modVersionProviderStrategy)
-
         val versionsMap = when (dataProviders.modVersionProviderStrategy) {
             DataProviderStrategy.ONLY_IF_ERROR -> {
                 var map = mapOf<MCVersion, Map<ModloaderType, ModVersions?>>()
@@ -117,9 +131,13 @@ object ModManager {
                 map
             }
         }
-
         logger.debug("Versions: {}", versionsMap)
 
+        availableVersions.set(versionsMap)
+    }
+
+    private suspend fun loadMetadata() {
+        val dataProviders = MetadataManager.dataProviders
         logger.debug("Metadata provider: {}", dataProviders.modMetadataProviderStrategy)
 
         val metadata = when (dataProviders.modMetadataProviderStrategy) {
@@ -165,11 +183,7 @@ object ModManager {
 
         logger.debug("Metadata: {}", metadata)
 
-        if (versionsMap.isEmpty()) throw IllegalStateException("No mod versions provider successfully loaded!")
-
-        availableVersions.set(versionsMap)
         modMetadata.set(metadata)
-        logger.info("Loaded mod versions and metadata!")
     }
 
     fun getPromotedMCVersions() = modMetadata.map { it?.promotedMCVersions ?: listOf() }.toListState()

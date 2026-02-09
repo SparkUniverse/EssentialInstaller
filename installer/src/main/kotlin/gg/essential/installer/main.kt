@@ -44,6 +44,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTime
 
 private val width = System.getProperty("ui.width")?.toIntOrNull() ?: 1000
 private val height = System.getProperty("ui.height")?.toIntOrNull() ?: 600
@@ -69,19 +70,22 @@ fun main(args: Array<String>) {
         runUniversalCraft("", scaleFactor * width, scaleFactor * height, resizable) { window ->
             mainCoroutineScope = this
 
-            Fonts.initFonts()
-            // More important stuff we need loaded before opening the installer
-            coroutineScope {
-                MetadataManager.loadDataProviders()
-                logger.info("Installer version: ${MetadataManager.installer.version}")
-                // Update the name once metadata is loaded
-                withContext(Dispatchers.Glfw) {
-                    GLFW.glfwSetWindowTitle(window.glfwWindow.glfwId, NAME)
-                    Platform.current().setWindowIcon(window)
-                }
+            val startupTime = measureTime {
+                Fonts.initFonts()
+                // More important stuff we need loaded before opening the installer
+                coroutineScope {
+                    MetadataManager.loadDataProviders()
+                    logger.info("Installer version: ${MetadataManager.installer.version}")
+                    // Update the name once metadata is loaded
+                    withContext(Dispatchers.Glfw) {
+                        GLFW.glfwSetWindowTitle(window.glfwWindow.glfwId, NAME)
+                        Platform.current().setWindowIcon(window)
+                    }
 
-                Launchers.detectLaunchers()
+                    Launchers.detectLaunchers()
+                }
             }
+            logger.info("Took ${startupTime.inWholeMilliseconds}ms, for pre-launch setup.")
 
             launch {
                 while (true) {
@@ -92,11 +96,14 @@ fun main(args: Array<String>) {
 
             // Less important stuff that can refresh as the installer is opening
             launch {
-                ModManager.loadModVersionsAndMetadata()
-                MCVersion.refreshKnownMcVersions() // First, we load known MC versions
-                ModloaderType.entries.forEach { it.modloader?.setup() } // Then we load modloader versions
-                Launchers.loadInstallations() // And then we load the installations
-                Fonts.loadFallback()
+                val time = measureTime {
+                    ModManager.loadModVersionsAndMetadata()
+                    MCVersion.refreshKnownMcVersions() // First, we load known MC versions
+                    ModloaderType.entries.forEach { it.modloader?.setup() } // Then we load modloader versions
+                    Launchers.loadInstallations() // And then we load the installations
+                    Fonts.loadFallback()
+                }
+                logger.info("Took ${time.inWholeMilliseconds}ms for post-launch setup.")
             }
 
             UMinecraft.guiScale = scaleFactor * (UResolution.viewportWidth / UResolution.windowWidth)
