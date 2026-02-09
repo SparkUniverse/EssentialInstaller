@@ -49,7 +49,7 @@ data class ModloaderInfo(
                     ModloaderInfo(ModloaderType.QUILT, version, numericVersion)
                 }
 
-                MCVersion.SNAPSHOT_PATTERN.matcher(version).find() -> ModloaderInfo(ModloaderType.NONE_SNAPSHOT, version)
+                version.contains("craftmine") || MCVersion.OLD_SNAPSHOT_PATTERN.matcher(version).find() -> ModloaderInfo(ModloaderType.NONE_SNAPSHOT, version)
                 MCVersion.BETA_PATTERN.matcher(version).find() -> ModloaderInfo(ModloaderType.NONE_BETA, version)
                 MCVersion.ALPHA_PATTERN.matcher(version).find() -> ModloaderInfo(ModloaderType.NONE_ALPHA, version)
 

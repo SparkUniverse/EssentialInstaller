@@ -99,7 +99,11 @@ object NeoForgeModloader : Modloader(ModloaderType.NEOFORGE) {
                     logger.warn("Failed to parse $ver! No numeric version was found...")
                     return@fold acc
                 }
-                val versionRaw = "1." + modloaderVersion.numeric.substring(0..<modloaderVersion.numeric.lastIndexOf('.'))
+                var versionRaw = modloaderVersion.numeric.substring(0..<modloaderVersion.numeric.lastIndexOf('.')) // Drop last number
+                if (versionRaw.count { it == '.' } < 2) {
+                    versionRaw = "1.$versionRaw" // Prefix 1. for versions < 26.x
+                }
+                versionRaw = "$versionRaw-${modloaderVersion.full.substringAfter('+', "")}"
                 val mcVersion = MCVersion.fromString(versionRaw) ?: return@fold acc
                 val list = acc.getOrPut(mcVersion) { mutableListOf() }
                 list.add(modloaderVersion)
@@ -199,7 +203,7 @@ object NeoForgeModloader : Modloader(ModloaderType.NEOFORGE) {
                                 val size = library.downloads.artifact.size
                                 if (pathString == null)
                                     continue
-                                if (installInfo.mcVersion >= MCVersion(20, 4) && name.matches(Regex("net\\.neoforged:neoforge:.*:client"))) {
+                                if (installInfo.mcVersion >= MCVersion(1, 20, 4) && name.matches(Regex("net\\.neoforged:neoforge:.*:client"))) {
                                     continue
                                 }
 
@@ -246,7 +250,7 @@ object NeoForgeModloader : Modloader(ModloaderType.NEOFORGE) {
                             versionProfileJson = versionProfileJson.set("arguments", arguments)
 
                             val libs = versionProfileJson["libraries"]?.jsonArray?.toMutableList() ?: mutableListOf()
-                            if (installInfo.mcVersion >= MCVersion(20, 4)) {
+                            if (installInfo.mcVersion >= MCVersion(1, 20, 4)) {
                                 libs.removeIf { it.jsonObject["name"]?.jsonPrimitive?.content?.matches(Regex("net\\.neoforged:neoforge:.*:client")) ?: false }
                             }
                             libs.add(

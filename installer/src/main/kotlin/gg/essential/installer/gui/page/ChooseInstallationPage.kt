@@ -80,7 +80,9 @@ class ChooseInstallationPage<I : Installation, NI : InstallInfo.New, EI : Instal
                 box(Modifier.width(174f)) {
                     installerBoldText(installation.name, Modifier.color(nameColor).alignHorizontal(Alignment.Start), truncateIfTooSmall = true, showTooltipForTruncatedText = true)
                 }
-                installerText(installation.versionString, Modifier.color(versionColor))
+                box(Modifier.fillRemainingWidth()) {
+                    installerText(installation.versionString, Modifier.color(versionColor).alignHorizontal(Alignment.Start), truncateIfTooSmall = true, showTooltipForTruncatedText = true)
+                }
             }
         }.onLeftClick {
             if (!supported.getUntracked()) return@onLeftClick

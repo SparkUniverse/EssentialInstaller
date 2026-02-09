@@ -84,20 +84,8 @@ class PrismLauncher(
     }
 
     override suspend fun loadInstallations() {
-        loadLauncherConfig()
-    }
-
-    suspend fun loadLauncherConfig(): Boolean {
-        return withContext(Dispatchers.IO) {
-            val launcherConfigFile = launcherPath / "prismlauncher.cfg"
-            if (Files.notExists(launcherConfigFile)) {
-                logger.warn("Config file at $launcherConfigFile could not be found!");
-                return@withContext false
-            }
-            val map = readConfigFileToMap(launcherConfigFile)
-
-            instancesFolder = launcherPath / (map["InstanceDir"] ?: "instances")
-            iconsFolder = launcherPath / (map["IconsDir"] ?: "icons")
+        withContext(Dispatchers.IO) {
+            loadLauncherConfig()
 
             val installations = Files.list(instancesFolder).collect(Collectors.toList()).mapNotNull { path ->
                 if (!path.isDirectorySafe()) return@mapNotNull null
@@ -126,9 +114,22 @@ class PrismLauncher(
                 }
             }
             installationsMutable.setAll(installations)
+        }
+    }
+
+    suspend fun loadLauncherConfig(): Boolean {
+        return withContext(Dispatchers.IO) {
+            val launcherConfigFile = launcherPath / "prismlauncher.cfg"
+            if (Files.notExists(launcherConfigFile)) {
+                logger.warn("Config file at $launcherConfigFile could not be found!");
+                return@withContext false
+            }
+            val map = readConfigFileToMap(launcherConfigFile)
+
+            instancesFolder = launcherPath / (map["InstanceDir"] ?: "instances")
+            iconsFolder = launcherPath / (map["IconsDir"] ?: "icons")
             return@withContext true
         }
-
     }
 
     override fun getNewGameDataFolder(name: String): Path {

@@ -70,7 +70,7 @@ class InstallationPage<I : Installation, NI : InstallInfo.New, EI : InstallInfo.
 
     // overridden in constructor, but initialized here because of other states that use them
     private val name = mutableStateOf("")
-    private val mcVersion = mutableStateOf(MCVersion(0, 0))
+    private val mcVersion = mutableStateOf(MCVersion(1, 0, 0))
     private val selectedModloader = mutableStateOf<Modloader?>(null)
 
     private val referenceHolder = ReferenceHolderImpl()

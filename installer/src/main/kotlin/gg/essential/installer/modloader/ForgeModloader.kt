@@ -160,13 +160,13 @@ object ForgeModloader : Modloader(ModloaderType.FORGE) {
                 logger.debug("installerTempPath = {}", installerTempPath)
                 logger.debug("Download step: {}", downloadStep)
                 downloadStep =
-                    if (installInfo.mcVersion <= MCVersion(12, 2)) {
+                    if (installInfo.mcVersion <= MCVersion(1, 12, 2)) {
                         downloadStep.then("Preparing library and version profile") {
                             logger.info("Preparing library and version profile")
                             val libraryTempFolderPath = installInfo.librariesTempPath / "net" / "minecraftforge" / "forge" / fullModloaderVersion
                             val libraryTempPath = libraryTempFolderPath / "forge-$fullModloaderVersion.jar"
                             val libraryZipEntry =
-                                if (installInfo.mcVersion <= MCVersion(8, 9))
+                                if (installInfo.mcVersion <= MCVersion(1, 8, 9))
                                     "forge-$fullModloaderVersion-universal.jar"
                                 else
                                     "maven/net/minecraftforge/forge/$fullModloaderVersion/forge-$fullModloaderVersion.jar"
@@ -239,7 +239,7 @@ object ForgeModloader : Modloader(ModloaderType.FORGE) {
                                     val size = library.downloads.artifact.size
                                     if (pathString == null)
                                         continue
-                                    if (installInfo.mcVersion >= MCVersion(20, 4) && name.matches(Regex("net\\.minecraftforge:forge:.*:client"))) {
+                                    if (installInfo.mcVersion >= MCVersion(1, 20, 4) && name.matches(Regex("net\\.minecraftforge:forge:.*:client"))) {
                                         continue
                                     }
 
@@ -286,7 +286,7 @@ object ForgeModloader : Modloader(ModloaderType.FORGE) {
                                 versionProfileJson = versionProfileJson.set("arguments", arguments)
 
                                 val libs = versionProfileJson["libraries"]?.jsonArray?.toMutableList() ?: mutableListOf()
-                                if (installInfo.mcVersion >= MCVersion(20, 4)) {
+                                if (installInfo.mcVersion >= MCVersion(1, 20, 4)) {
                                     libs.removeIf { it.jsonObject["name"]?.jsonPrimitive?.content?.matches(Regex("net\\.minecraftforge:forge:.*:client")) ?: false }
                                 }
                                 libs.add(

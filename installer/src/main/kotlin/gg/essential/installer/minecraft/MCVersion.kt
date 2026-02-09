@@ -37,17 +37,17 @@ import org.intellij.lang.annotations.Language
 import java.util.regex.Pattern
 
 /**
- * Represent a minecraft version, supports versions 1.0.0 and higher.
- *
- * Does not support Minecraft 2.0 and higher if Mojang changes their mind.
+ * Represent a minecraft version, supports versions 1.x.y and 26.x.y - 99.x.y. Also supports snapshots for the latter versions.
  */
 @Serializable(with = MCVersion.Serializer::class)
 data class MCVersion(
     val major: Int,
     val minor: Int,
+    val patch: Int,
+    val snapshot: Int? = null
 ) : Comparable<MCVersion> {
     override fun toString(): String {
-        return if (minor == 0) "1.$major" else "1.$major.$minor"
+        return (if (patch == 0) "$major.$minor" else "$major.$minor.$patch") + if (snapshot != null) "-snapshot-$snapshot" else ""
     }
 
     override fun compareTo(other: MCVersion) = COMPARATOR.compare(this, other)
@@ -57,17 +57,22 @@ data class MCVersion(
             ignoreUnknownKeys = true
         }
 
+        // Accepts either old 1.x.y format or modern <year>.<number>.<patch>,
+        // where year must be between 20 and 99, to prevent accidental matching elsewhere
         @Language("RegExp")
-        private val PATTERN: Pattern = Pattern.compile("1\\.(?<major>\\d+)(\\.(?<minor>\\d+))?")
+        private val mcVersionRegex = "(?<major>(1|[2-9]\\d))\\.(?<minor>\\d+)(\\.(?<patch>\\d+))?(-snapshot-(?<snapshot>\\d+))?"
+        @Language("RegExp")
+        private val PATTERN: Pattern = Pattern.compile(mcVersionRegex)
         @Language("RegExp")
         private val STRICT_PATTERN: Pattern = Pattern.compile("^$PATTERN$")
 
+        // Either <year>w<week><letter> or the new <version>-snapshot-<digit>
         @Language("RegExp")
-        val SNAPSHOT_PATTERN: Pattern = Pattern.compile("^\\d+w\\d+\\w\$")
+        val OLD_SNAPSHOT_PATTERN: Pattern = Pattern.compile("^(\\d+w\\d+\\w)$")
         @Language("RegExp")
         val BETA_PATTERN: Pattern = Pattern.compile("^b1.*$")
         @Language("RegExp")
-        val ALPHA_PATTERN: Pattern = Pattern.compile("^(a1|inf-|c0|rd-).*\$")
+        val ALPHA_PATTERN: Pattern = Pattern.compile("^(a1|inf-|c0|rd-).*$")
 
         val COMPARATOR = compareBy<MCVersion> { it.major }.thenBy { it.minor }
 
@@ -84,8 +89,8 @@ data class MCVersion(
          *  @param ignoreKnownVersions If true, does not check if the parsed version is in the list of known versions
          */
         fun fromString(version: String, strict: Boolean = true, ignoreKnownVersions: Boolean = false): MCVersion? {
-            // If we are non-strict, we still don't parse snapshot, beta and alpha versions, to prevent accidental matches.
-            if (!strict && (SNAPSHOT_PATTERN.matcher(version).find() || BETA_PATTERN.matcher(version).find() || ALPHA_PATTERN.matcher(version).find())) {
+            // If we are non-strict, we still don't parse old snapshot format, beta and alpha versions, to prevent accidental matches.
+            if (!strict && (version.contains("craftmine") || OLD_SNAPSHOT_PATTERN.matcher(version).find() || BETA_PATTERN.matcher(version).find() || ALPHA_PATTERN.matcher(version).find())) {
                 return null
             }
 
@@ -98,8 +103,10 @@ data class MCVersion(
 
             val major = matcher.group("major")?.toInt() ?: return null
             val minor = matcher.group("minor")?.toInt() ?: 0
+            val patch = matcher.group("patch")?.toInt() ?: 0
+            val snapshot = matcher.group("snapshot")?.toInt()
 
-            val mcVersion = MCVersion(major, minor)
+            val mcVersion = MCVersion(major, minor, patch, snapshot)
 
             if (!ignoreKnownVersions && !knownVersions.getUntracked().contains(mcVersion)) {
                 Logging.logger.warn("Parsed version $mcVersion from '$version' was not a valid version?")
@@ -120,7 +127,6 @@ data class MCVersion(
                 val versions = HttpManager.httpGet(MetadataManager.installer.urls.minecraftVersions)
                     .decode<Versions>(json)
                     .versions
-                    .filter { it.type == "release" }
                     .mapNotNull { fromString(it.id, ignoreKnownVersions = true) }
                 knownVersionsMutable.setAll(versions)
                 Logging.logger.info("Successfully refreshed versions. New known versions: " + versions.joinToString(", "))

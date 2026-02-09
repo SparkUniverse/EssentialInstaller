@@ -222,7 +222,7 @@ object ModManager {
         }
         val modVersion = installInfo.modVersion
         val downloadInfo = modVersion.downloadInfo
-        val filename = if(modVersion.version.isBlank()) "$BRAND-${installInfo.mcVersion}.jar" else "$BRAND-${modVersion.version}-${installInfo.mcVersion}.jar"
+        val filename = if (modVersion.version.isBlank()) "$BRAND-${installInfo.mcVersion}.jar" else "$BRAND-${modVersion.version}-${installInfo.mcVersion}.jar"
         val tempPath = Platform.tempFolder / filename
         val modsFolder = installInfo.gameFolder / "mods"
         val modPath = modsFolder / filename
@@ -264,7 +264,7 @@ object ModManager {
                     // Create a temp file so that `toRealPath()` below doesn't fail...
                     // This is a dumb workaround for a quick change I made on the mod side,
                     // but the mod has now shipped already, so we work with what we have
-                    if(Files.notExists(installerMetadataPath)) {
+                    if (Files.notExists(installerMetadataPath)) {
                         Files.createFile(installerMetadataPath)
                     }
                     val pathBytes = installerMetadataPath.toRealPath().pathString.toByteArray() // uses UTF_8 by default
