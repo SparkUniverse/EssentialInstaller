@@ -15,7 +15,6 @@
 
 package gg.essential.installer.modloader
 
-import gg.essential.installer.download.DownloadRequest
 import gg.essential.installer.download.HttpManager
 import gg.essential.installer.download.decode
 import gg.essential.installer.download.util.CompleteURL
@@ -23,6 +22,7 @@ import gg.essential.installer.download.util.DownloadInfo
 import gg.essential.installer.install.ErrorInstallStep
 import gg.essential.installer.install.InstallSteps
 import gg.essential.installer.install.StandaloneInstallStep
+import gg.essential.installer.install.downloadRequest
 import gg.essential.installer.install.execute
 import gg.essential.installer.launcher.InstallInfo
 import gg.essential.installer.launcher.prism.MMCPack
@@ -141,7 +141,7 @@ object NeoForgeModloader : Modloader(ModloaderType.NEOFORGE) {
                     ) null else ErrorInstallStep(IllegalArgumentException("Minecraft version ${installInfo.mcVersion} not supported by NeoForge"))
                 val installStep: StandaloneInstallStep = installInfo.launcher.writeLibrariesAndVersionProfileInstallStep(installInfo)
                 val neoforgeInstallerUrl = MetadataManager.installer.urls.neoforgeInstaller.replace("{fullModloaderVersion}", fullModloaderVersion)
-                var downloadStep: StandaloneInstallStep = DownloadRequest(
+                var downloadStep: StandaloneInstallStep = downloadRequest(
                     DownloadInfo(
                         "NeoForge installer",
                         neoforgeInstallerUrl,
@@ -234,7 +234,7 @@ object NeoForgeModloader : Modloader(ModloaderType.NEOFORGE) {
                                     logger.debug("Copying {} from installer to {}", zipPath, target)
                                     Files.newOutputStream(target).use { zipFile.getInputStream(entry).copyTo(it) }
                                 } else if (!url.isNullOrBlank()) {
-                                    DownloadRequest(DownloadInfo(name, url, size, DownloadInfo.Checksums(sha1 = sha1)), libraryDownloadPath).execute()
+                                    downloadRequest(DownloadInfo(name, url, size, DownloadInfo.Checksums(sha1 = sha1)), libraryDownloadPath).execute()
                                 }
                             }
 

@@ -21,9 +21,9 @@ import gg.essential.elementa.unstable.state.v2.filter
 import gg.essential.elementa.unstable.state.v2.memo
 import gg.essential.elementa.unstable.state.v2.mutableStateOf
 import gg.essential.elementa.unstable.state.v2.toListState
-import gg.essential.installer.download.DownloadRequest
 import gg.essential.installer.download.util.DownloadInfo
 import gg.essential.installer.install.InstallSteps
+import gg.essential.installer.install.downloadRequest
 import gg.essential.installer.install.installationStep
 import gg.essential.installer.isNoModInstallMode
 import gg.essential.installer.launcher.InstallInfo
@@ -80,7 +80,7 @@ object ModManager {
             logger.warn("Running in no mod install mode! This means mod versions will not actually be loaded!")
             MCVersion.refreshKnownMcVersions() // Hack, since this is otherwise refreshed after this method...
             val version = ModVersion("", "", DownloadInfo("", "", true))
-            val map = Modloader.entries.associate { it.type to ModVersions(version, null, listOf(version)) }
+            val map = Modloader.entries.associate { it.type to ModVersions(version) }
             availableVersions.set(MCVersion.knownVersions.filter { it >= MCVersion(1, 8, 9) }.getUntracked().associateWith { map })
             return
         }
@@ -230,7 +230,7 @@ object ModManager {
         return InstallSteps(
             prepareStep = null,
             // We assume mods are large files if no size was provided
-            downloadStep = DownloadRequest(downloadInfo, tempPath),
+            downloadStep = downloadRequest(BRAND, downloadInfo, tempPath),
             installStep = installationStep<Unit, Unit>(installStepName) {
                 logger.info("Making sure $modsFolder exists")
                 Files.createDirectories(modsFolder)

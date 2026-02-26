@@ -15,13 +15,13 @@
 
 package gg.essential.installer.modloader
 
-import gg.essential.installer.download.DownloadRequest
 import gg.essential.installer.download.HttpManager
 import gg.essential.installer.download.decode
 import gg.essential.installer.download.util.Domains
 import gg.essential.installer.download.util.DownloadInfo
 import gg.essential.installer.install.ErrorInstallStep
 import gg.essential.installer.install.InstallSteps
+import gg.essential.installer.install.downloadRequest
 import gg.essential.installer.launcher.InstallInfo
 import gg.essential.installer.launcher.vanilla.MinecraftInstallInfo
 import gg.essential.installer.metadata.MetadataManager
@@ -93,7 +93,7 @@ object FabricModloader : Modloader(ModloaderType.FABRIC) {
             is MinecraftInstallInfo -> InstallSteps(
                 prepareStep = if (availableVersions.getUntracked().containsKey(installInfo.mcVersion)) null
                 else ErrorInstallStep(IllegalArgumentException("Minecraft version ${installInfo.mcVersion} not supported by Fabric")),
-                downloadStep = DownloadRequest(
+                downloadStep = downloadRequest(
                     DownloadInfo(
                         "Fabric version profile",
                         META_DOMAINS,

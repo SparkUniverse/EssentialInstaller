@@ -15,7 +15,6 @@
 
 package gg.essential.installer.modloader
 
-import gg.essential.installer.download.DownloadRequest
 import gg.essential.installer.download.HttpManager
 import gg.essential.installer.download.decode
 import gg.essential.installer.download.util.Domains
@@ -23,6 +22,7 @@ import gg.essential.installer.download.util.DownloadInfo
 import gg.essential.installer.install.ErrorInstallStep
 import gg.essential.installer.install.InstallSteps
 import gg.essential.installer.install.StandaloneInstallStep
+import gg.essential.installer.install.downloadRequest
 import gg.essential.installer.install.execute
 import gg.essential.installer.launcher.InstallInfo
 import gg.essential.installer.launcher.vanilla.MinecraftInstallInfo
@@ -135,7 +135,7 @@ object ForgeModloader : Modloader(ModloaderType.FORGE) {
                     ) null else ErrorInstallStep(IllegalArgumentException("Minecraft version ${installInfo.mcVersion} not supported by Forge"))
                 val installStep: StandaloneInstallStep = installInfo.launcher.writeLibrariesAndVersionProfileInstallStep(installInfo)
                 val forgeInstallerUrl = MetadataManager.installer.urls.forgeInstaller.replace("{fullModloaderVersion}", fullModloaderVersion)
-                var downloadStep: StandaloneInstallStep = DownloadRequest(
+                var downloadStep: StandaloneInstallStep = downloadRequest(
                     DownloadInfo(
                         "Forge installer",
                         forgeInstallerUrl,
@@ -270,7 +270,7 @@ object ForgeModloader : Modloader(ModloaderType.FORGE) {
                                         logger.debug("Copying {} from installer to {}", zipPath, target)
                                         Files.newOutputStream(target).use { zipFile.getInputStream(entry).copyTo(it) }
                                     } else if (!url.isNullOrBlank()) {
-                                        DownloadRequest(DownloadInfo(name, url, size, DownloadInfo.Checksums(sha1 = sha1)), libraryDownloadPath).execute()
+                                        downloadRequest(DownloadInfo(name, url, size, DownloadInfo.Checksums(sha1 = sha1)), libraryDownloadPath).execute()
                                     }
                                 }
 

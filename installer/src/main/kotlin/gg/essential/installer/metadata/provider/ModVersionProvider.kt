@@ -73,30 +73,30 @@ sealed interface ModVersionProvider {
                 val platformVersions = response.decode<List<Version>>(snakeCaseJson).groupBy(Version::minecraftVersion, Version::type)
 
                 val versions = platformVersions.mapValues { (mcVersion, modloaderTypes) ->
-                    async(Dispatchers.IO) {
-                        modloaderTypes.associateWith { modloaderType ->
+                    modloaderTypes.associateWith { modloaderType ->
+                        val modVersionID = "$modloaderType-$mcVersion"
+                        val downloadInfo = suspend {
                             val infoURL = downloadInfoURL
                                 .replace("{modloader}", modloaderType.name.lowercase())
                                 .replace("{mc-version}", mcVersion.toString())
                                 .replace("{mc-version-dashed}", mcVersion.toString().replace('.', '-'))
-                            try {
-                                val httpResponse = HttpManager.httpGet(infoURL)
-                                if (httpResponse.status.isSuccess()) {
-                                    val modDownloadInfo = httpResponse.decode<ModDownloadInfo>(snakeCaseJson)
-                                    val downloadInfo = DownloadInfo(BRAND, modDownloadInfo.url, true, DownloadInfo.Checksums(md5 = modDownloadInfo.checksum))
-                                    val modVersion = ModVersion("$modloaderType-$mcVersion", "", downloadInfo) // Version is blank because we don't have that info
 
-                                    ModVersions(modVersion, null, listOf(modVersion))
-                                } else null
-                            } catch (e: Exception) {
-                                logger.warn("Error when calling $infoURL", e)
-                                null
+                            val httpResponse = HttpManager.httpGet(infoURL)
+                            // We can throw as this is not handled during the install process which catches this and fails the installation
+                            if (!httpResponse.status.isSuccess()) {
+                                throw RuntimeException("Unexpected http status ${httpResponse.status} when fetching download info from URL: $infoURL!")
                             }
+                            val modDownloadInfo = httpResponse.decode<ModDownloadInfo>(snakeCaseJson)
+                            DownloadInfo(BRAND, modDownloadInfo.url, true, DownloadInfo.Checksums(md5 = modDownloadInfo.checksum))
                         }
+                        // Version is blank because we don't have that info
+                        ModVersions(ModVersion(modVersionID, "", downloadInfo))
                     }
-                }.mapValues { (_, versions) -> versions.await() }
+                }
 
-                val versionsString = versions.entries.joinToString("; ") { (mcVersion, map) -> "$mcVersion-[${map.entries.joinToString(",") { (type, versions) -> "$type-${(versions?.latestFeatured ?: versions?.latest)?.version}" }}]"  }
+                val versionsString = versions.entries.joinToString("; ") { (mcVersion, map) ->
+                    "$mcVersion-[${map.entries.joinToString(",") { (type, versions) -> "$type-${(versions.latestFeatured ?: versions.latest).version}" }}]"
+                }
                 logger.info("Versions: $versionsString")
                 versions
             }
@@ -166,7 +166,9 @@ sealed interface ModVersionProvider {
                         )
                     }
                 }
-                val versionsString = versionsMap.entries.joinToString("; ") { (mcVersion, map) -> "$mcVersion-[${map.entries.joinToString(",") { (type, versions) -> "$type-${(versions.latestFeatured ?: versions.latest).version}" }}]"  }
+                val versionsString = versionsMap.entries.joinToString("; ") { (mcVersion, map) ->
+                    "$mcVersion-[${map.entries.joinToString(",") { (type, versions) -> "$type-${(versions.latestFeatured ?: versions.latest).version}" }}]"
+                }
                 logger.info("Versions: $versionsString")
                 versionsMap
             }

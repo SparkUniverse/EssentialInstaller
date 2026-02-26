@@ -26,5 +26,5 @@ import kotlinx.serialization.Serializable
 data class ModVersions(
     val latest: ModVersion,
     val latestFeatured: ModVersion? = null,
-    val versions: List<ModVersion>,
+    val versions: List<ModVersion> = listOf(latest),
 )
