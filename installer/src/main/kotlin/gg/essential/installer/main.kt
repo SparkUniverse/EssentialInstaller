@@ -29,6 +29,7 @@ import gg.essential.universal.UMinecraft
 import gg.essential.universal.UResolution
 import gg.essential.universal.UScreen
 import gg.essential.universal.standalone.UCWindow
+import gg.essential.universal.standalone.glfw.GLFWException
 import gg.essential.universal.standalone.glfw.Glfw
 import gg.essential.universal.standalone.runUniversalCraft
 import kotlinx.coroutines.CoroutineScope
@@ -118,15 +119,18 @@ fun main(args: Array<String>) {
 
             displayScreen(window, width, height, PageHandler.createMainScreen())
         }
-    } catch (e: Exception) {
-        if (e.message?.endsWith(" (code ${GLFW.GLFW_API_UNAVAILABLE})") == true) {
-            logger.error("No OpenGL Support found. Exiting with appropriate exit code.")
+    } catch (e: GLFWException) {
+        val code = e.glfwErrorCode
+        val msg = e.glfwErrorMessage
+        logger.error("OpenGL Error: $msg (code $code)")
+        if (code == GLFW.GLFW_API_UNAVAILABLE) {
             exit(ExitCode.NO_OPEN_GL)
         } else {
-            logger.error("Uncaught error in UniversalCraft", e)
-            exit(ExitCode.UNKNOWN_ERROR)
+            exit(ExitCode.OPEN_GL_ERROR)
         }
-
+    } catch (e: Exception) {
+        logger.error("Uncaught error in UniversalCraft", e)
+        exit(ExitCode.UNKNOWN_ERROR)
     }
     if (requestRestart) {
         logger.info("Exiting with a restart request")
@@ -190,7 +194,7 @@ class ExitCode {
 
         const val UNKNOWN_ERROR = 100
         const val NO_OPEN_GL = 101
-        const val UNSUPPORTED_PATH = 102
+        const val OPEN_GL_ERROR = 102
 
         const val RESTART_REQUESTED = 200
     }

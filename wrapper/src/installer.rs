@@ -26,7 +26,7 @@ pub enum InstallerExitCode {
     Success,
     UnknownError,
     NoOpenGl,
-    UnsupportedPath,
+    OpenGlError,
 }
 
 pub enum InstallerRunError {
@@ -117,7 +117,7 @@ pub fn try_run_installer(
         0 => InstallerExitCode::Success,
         100 => InstallerExitCode::UnknownError,
         101 => InstallerExitCode::NoOpenGl,
-        102 => InstallerExitCode::UnsupportedPath,
+        102 => InstallerExitCode::OpenGlError,
         e => return Err(InstallerRunError::UnknownExitCode(e)),
     };
 
@@ -170,9 +170,9 @@ pub fn run_installer_task(
                             error!("No OpenGL found when running installer!");
                             AppState::Errored("No OpenGL found!".to_string())
                         }
-                        InstallerExitCode::UnsupportedPath => {
-                            error!("Launcher found an unsupported path!");
-                            AppState::Errored("Launcher found an unsupported path!".to_string())
+                        InstallerExitCode::OpenGlError => {
+                            error!("OpenGL error! Check installer logs!");
+                            AppState::Errored("OpenGL error! Check installer logs!".to_string())
                         }
                     },
                     Err(e) => {

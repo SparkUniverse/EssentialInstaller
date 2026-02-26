@@ -1,8 +1,8 @@
 plugins {
-    kotlin("jvm") version "2.0.10"
+    kotlin("jvm") version "2.3.0"
     application
     id("com.gradleup.shadow") version "8.3.0"
-    kotlin("plugin.serialization") version "2.0.10"
+    kotlin("plugin.serialization") version "2.3.0"
 }
 
 group = "gg.essential"
@@ -16,7 +16,7 @@ repositories {
 
 dependencies {
     // See https://github.com/EssentialGG/Elementa for latest Elementa and UC build numbers
-    val universalCraftVersion = 440
+    val universalCraftVersion = 453
     implementation("gg.essential:universalcraft-standalone:$universalCraftVersion")
 
     val elementaVersion = 714
