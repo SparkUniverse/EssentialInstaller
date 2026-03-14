@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Provided by CI
 #TITLE_FONT_BASE64="..."
