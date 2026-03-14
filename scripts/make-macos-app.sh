@@ -68,7 +68,9 @@ EOL
 
 echo "Wrote plist file"
 
-rm "$APP_NAME.app.zip"
+if [ -e "$APP_NAME.app.zip" ]; then
+  rm "$APP_NAME.app.zip"
+fi
 zip -rX9 "$APP_NAME.app.zip" "$APP_NAME.app"
 
 echo "Compressed .app"
