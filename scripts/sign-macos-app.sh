@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -oe pipefail
+set -o pipefail
 
 # Provided by CI, can be uncommented if manually signing
 #IDENTITY="identity"
@@ -18,16 +18,16 @@ function sign() {
     codesign -s "$IDENTITY" --options=runtime --timestamp --strict --deep --force "$1"
 }
 
-# Extract the .app.zip file
-unzip "$APP_NAME".app.zip
+# Clean up any files from previous signing attempts.
+rm "$APP_NAME".zip || true
+rm notarisation.result || true
 
 # Ensure that if any of the commands fail, that the script does not execute further.
 # Also prints out the commands that are being executed.
 set -xe
 
-# Clean up any files from previous signing attempts.
-rm "$APP_NAME".zip || true
-rm notarisation.result || true
+# Extract the .app.zip file
+unzip "$APP_NAME".app.zip
 
 # We need to extract all libraries from the inner JAR to code-sign them.
 # This is a required step.
@@ -75,5 +75,7 @@ xcrun stapler staple "$APP_NAME".app
 
 # Re-zip the stapled application
 rm "$APP_NAME".app.zip || true
-rm "$APP_NAME_VERSIONED".app.zip || true
+if [ -e "$APP_NAME_VERSIONED".app.zip ]; then
+  rm "$APP_NAME_VERSIONED".app.zip || true
+fi
 zip "$APP_NAME_VERSIONED".app.zip -r "$APP_NAME".app
