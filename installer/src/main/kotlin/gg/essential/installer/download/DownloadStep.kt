@@ -51,18 +51,15 @@ class DownloadStep(
     private val block: HttpRequestBuilder.() -> Unit = {},
 ) : InputInstallStep<DownloadInfo>("Downloading $name") {
 
-    private val steps = mutableStateOf(1)
-    private val stepsCompletedMutable = mutableStateOf(0)
-
-    override val numberOfSteps = steps
-    override val stepsCompleted = stepsCompletedMutable
+    override val numberOfSteps = mutableStateOf(1)
+    override val stepsCompleted = mutableStateOf(0)
     override val currentStep = stateOf(this)
 
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     override suspend fun execute(download: DownloadInfo): Result<Unit> {
         try {
             val steps = if (download.size > 0) ceil(download.size.toFloat() / BUFFER_SIZE).toInt() else if (download.largeFile) 10 else 1
-            this.steps.set(steps)
+            this.numberOfSteps.set(steps)
             withContext(Dispatchers.IO) {
                 val fullPath = if (path.isAbsolute) path else Platform.tempFolder / path
 
@@ -92,7 +89,7 @@ class DownloadStep(
                             val bytes = packet.readByteArray()
                             outputStream.write(bytes)
                             totalReceived += bytes.size
-                            if (contentLength >= 0) {
+                            if (contentLength > 0) {
                                 progress = totalReceived / contentLength.toFloat()
                                 withContext(Dispatchers.Main) {
                                     stepsCompleted.set(floor(progress * steps).toInt())
@@ -128,7 +125,7 @@ class DownloadStep(
     }
 
     override fun toString(): String {
-        return "DownloadRequest(name=$name, openOptions=$openOptions, path=$path)"
+        return "DownloadStep(name=$name, openOptions=$openOptions, path=$path)"
     }
 
     companion object {
