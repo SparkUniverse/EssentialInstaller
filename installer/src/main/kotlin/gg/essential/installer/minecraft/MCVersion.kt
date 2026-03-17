@@ -74,7 +74,7 @@ data class MCVersion(
         @Language("RegExp")
         val ALPHA_PATTERN: Pattern = Pattern.compile("^(a1|inf-|c0|rd-).*$")
 
-        val COMPARATOR = compareBy<MCVersion> { it.major }.thenBy { it.minor }
+        val COMPARATOR = compareBy<MCVersion> { it.major }.thenBy { it.minor }.thenBy { it.patch }.thenBy { it.snapshot }
 
         private val knownVersionsMutable = mutableListStateOf<MCVersion>()
         val knownVersions: ListState<MCVersion>
@@ -129,7 +129,8 @@ data class MCVersion(
                     .versions
                     .mapNotNull { fromString(it.id, ignoreKnownVersions = true) }
                 knownVersionsMutable.setAll(versions)
-                Logging.logger.info("Successfully refreshed versions. New known versions: " + versions.joinToString(", "))
+                val str = versions.chunked(20).joinToString("\n") { it.joinToString(", ") }
+                Logging.logger.info("Successfully refreshed versions. New known versions:\n$str")
             } catch (e: Exception) {
                 Logging.logger.info("Error refreshing minecraft versions!", e)
             }
