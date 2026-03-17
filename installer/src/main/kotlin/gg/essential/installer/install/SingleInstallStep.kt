@@ -19,6 +19,7 @@ import gg.essential.elementa.unstable.state.v2.State
 import gg.essential.elementa.unstable.state.v2.combinators.map
 import gg.essential.elementa.unstable.state.v2.mutableStateOf
 import gg.essential.elementa.unstable.state.v2.stateOf
+import gg.essential.installer.isDebug
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -43,7 +44,10 @@ class SingleInstallStep<I, O>(
             // This was left at 1000 accidentally from testing,
             // but I think some delay makes the process look nicer if there are no downloads to do.
             // Instead of an instant flash to install finished
-            delay(250)
+            // Disable it in debug mode, otherwise modes like install everything take way too long
+            if (!isDebug()) {
+                delay(250)
+            }
             withContext(Dispatchers.Main) {
                 completed.set(true)
             }
