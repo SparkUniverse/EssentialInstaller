@@ -155,6 +155,7 @@ object DebugPage : InstallerPage() {
                         InstallSteps.merge(
                             modloader.getInstallSteps(installInfo),
                             launcher.getNewInstallationInstallSteps(installInfo),
+                            ModManager.getInstallSteps(installInfo),
                         )
                     }
                 }
