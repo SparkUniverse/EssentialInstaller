@@ -27,9 +27,7 @@ import gg.essential.installer.mod.ModVersions
 import gg.essential.installer.modloader.ModloaderType
 import gg.essential.installer.util.InstantAsIso8601Serializer
 import io.ktor.http.*
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -55,7 +53,7 @@ sealed interface ModVersionProvider {
     suspend fun getAvailableModVersions(): Map<MCVersion, Map<ModloaderType, ModVersions?>>
 
     /*
-    Intended for internal essential use. Uses the old installer's endpoint. A custom endpoint for new installer to come later.
+    Intended for internal essential use.
      */
     @Serializable
     @SerialName("url")
@@ -69,35 +67,27 @@ sealed interface ModVersionProvider {
         override suspend fun getAvailableModVersions(): Map<MCVersion, Map<ModloaderType, ModVersions?>> {
             return withContext(Dispatchers.IO) {
                 logger.info("Fetching mod versions from URL: $versionURL and download info from $downloadInfoURL!")
-                val response = HttpManager.httpGet(versionURL)
-                val platformVersions = response.decode<List<Version>>(snakeCaseJson).groupBy(Version::minecraftVersion, Version::type)
+                val versionResponse = HttpManager.httpGet(versionURL)
+                val platformVersions = versionResponse.decode<List<Version>>(snakeCaseJson).groupBy(Version::minecraftVersion, Version::type)
+
+                val downloadResponse = HttpManager.httpGet(downloadInfoURL)
+                val downloadMap = downloadResponse.decode<DownloadResponse>(snakeCaseJson).stable
 
                 val versions = platformVersions.mapValues { (mcVersion, modloaderTypes) ->
                     modloaderTypes.associateWith { modloaderType ->
-                        val modVersionID = "$modloaderType-$mcVersion"
-                        val downloadInfo = suspend {
-                            val infoURL = downloadInfoURL
-                                .replace("{modloader}", modloaderType.name.lowercase())
-                                .replace("{mc-version}", mcVersion.toString())
-                                .replace("{mc-version-dashed}", mcVersion.toString().replace('.', '-'))
-
-                            val httpResponse = HttpManager.httpGet(infoURL)
-                            // We can throw as this is not handled during the install process which catches this and fails the installation
-                            if (!httpResponse.status.isSuccess()) {
-                                throw RuntimeException("Unexpected http status ${httpResponse.status} when fetching download info from URL: $infoURL!")
-                            }
-                            val modDownloadInfo = httpResponse.decode<ModDownloadInfo>(snakeCaseJson)
-                            DownloadInfo(BRAND, modDownloadInfo.url, true, DownloadInfo.Checksums(md5 = modDownloadInfo.checksum))
-                        }
-                        // Version is blank because we don't have that info
-                        ModVersions(ModVersion(modVersionID, "", downloadInfo))
+                        val id = "${modloaderType.name.lowercase()}_${mcVersion.toString().replace('.', '-')}"
+                        val download = downloadMap[id] ?: return@associateWith null
+                        val downloadInfo = DownloadInfo(BRAND, download.url, true, DownloadInfo.Checksums(md5 = download.checksum))
+                        ModVersions(ModVersion(id, download.version, downloadInfo))
                     }
                 }
 
-                val versionsString = versions.entries.joinToString("; ") { (mcVersion, map) ->
-                    "$mcVersion-[${map.entries.joinToString(",") { (type, versions) -> "$type-${(versions.latestFeatured ?: versions.latest).version}" }}]"
+                val versionsString = versions.entries.chunked(5).joinToString("\n") {
+                    it.joinToString("; ") { (mcVersion, map) ->
+                        "$mcVersion-[${map.entries.joinToString(",") { (type, versions) -> "$type-${(versions?.latestFeatured ?: versions?.latest)?.version}" }}]"
+                    }
                 }
-                logger.info("Versions: $versionsString")
+                logger.info("Versions:\n$versionsString")
                 versions
             }
         }
@@ -110,7 +100,13 @@ sealed interface ModVersionProvider {
         )
 
         @Serializable
+        private data class DownloadResponse(
+            val stable: Map<String, ModDownloadInfo>
+        )
+
+        @Serializable
         private data class ModDownloadInfo(
+            val version: String,
             val url: String,
             val checksum: String, // MD5
         )
