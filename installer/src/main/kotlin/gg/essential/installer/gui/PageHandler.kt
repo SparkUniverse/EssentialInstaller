@@ -188,7 +188,7 @@ object PageHandler {
 
     class LayoutDslScreen(
         block: LayoutScope.() -> Unit,
-    ) : WindowScreen(ElementaVersion.V10) {
+    ) : WindowScreen(ElementaVersion.V11) {
         init {
             window.layoutAsBox {
                 block()

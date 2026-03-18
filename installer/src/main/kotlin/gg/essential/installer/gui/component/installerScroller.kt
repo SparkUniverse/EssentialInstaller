@@ -46,7 +46,7 @@ fun LayoutScope.installerScroller(
     // Bottom padding is on the scroller, as fillRemainingHeight doesn't provide that option
     box(Modifier.fillWidth().fillRemainingHeight() then alignModifier) {
         // Padding is half the design value, since it's applied on both sides, but the method with the option to disable double padding is private...
-        val scroller by scrollable(Modifier.fillWidth().fillHeight(padding = 16f) then alignModifier then modifier, vertical = true, pixelsPerScroll = 30f) {
+        val scroller by scrollable(Modifier.fillWidth().fillHeight(padding = 16f) then alignModifier then modifier, vertical = true) {
             column(Modifier.fillWidth().alignVertical(Alignment.Start) then columnModifier, columnArrangement) {
                 block()
             }
