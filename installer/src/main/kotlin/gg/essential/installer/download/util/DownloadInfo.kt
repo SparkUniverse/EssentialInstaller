@@ -15,7 +15,7 @@
 
 package gg.essential.installer.download.util
 
-import gg.essential.installer.download.DownloadRequest.Companion.BUFFER_SIZE
+import gg.essential.installer.download.DownloadStep.Companion.BUFFER_SIZE
 import kotlinx.serialization.Serializable
 
 /**

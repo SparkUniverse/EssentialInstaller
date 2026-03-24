@@ -15,7 +15,6 @@
 
 package gg.essential.installer.modloader
 
-import gg.essential.installer.download.DownloadRequest
 import gg.essential.installer.download.HttpManager
 import gg.essential.installer.download.decode
 import gg.essential.installer.download.util.CompleteURL
@@ -23,6 +22,7 @@ import gg.essential.installer.download.util.DownloadInfo
 import gg.essential.installer.install.ErrorInstallStep
 import gg.essential.installer.install.InstallSteps
 import gg.essential.installer.install.StandaloneInstallStep
+import gg.essential.installer.install.downloadRequest
 import gg.essential.installer.install.execute
 import gg.essential.installer.launcher.InstallInfo
 import gg.essential.installer.launcher.prism.MMCPack
@@ -99,7 +99,11 @@ object NeoForgeModloader : Modloader(ModloaderType.NEOFORGE) {
                     logger.warn("Failed to parse $ver! No numeric version was found...")
                     return@fold acc
                 }
-                val versionRaw = "1." + modloaderVersion.numeric.substring(0..<modloaderVersion.numeric.lastIndexOf('.'))
+                var versionRaw = modloaderVersion.numeric.substring(0..<modloaderVersion.numeric.lastIndexOf('.')) // Drop last number
+                if (versionRaw.count { it == '.' } < 2) {
+                    versionRaw = "1.$versionRaw" // Prefix 1. for versions < 26.x
+                }
+                versionRaw = "$versionRaw-${modloaderVersion.full.substringAfter('+', "")}"
                 val mcVersion = MCVersion.fromString(versionRaw) ?: return@fold acc
                 val list = acc.getOrPut(mcVersion) { mutableListOf() }
                 list.add(modloaderVersion)
@@ -137,7 +141,7 @@ object NeoForgeModloader : Modloader(ModloaderType.NEOFORGE) {
                     ) null else ErrorInstallStep(IllegalArgumentException("Minecraft version ${installInfo.mcVersion} not supported by NeoForge"))
                 val installStep: StandaloneInstallStep = installInfo.launcher.writeLibrariesAndVersionProfileInstallStep(installInfo)
                 val neoforgeInstallerUrl = MetadataManager.installer.urls.neoforgeInstaller.replace("{fullModloaderVersion}", fullModloaderVersion)
-                var downloadStep: StandaloneInstallStep = DownloadRequest(
+                var downloadStep: StandaloneInstallStep = downloadRequest(
                     DownloadInfo(
                         "NeoForge installer",
                         neoforgeInstallerUrl,
@@ -199,7 +203,7 @@ object NeoForgeModloader : Modloader(ModloaderType.NEOFORGE) {
                                 val size = library.downloads.artifact.size
                                 if (pathString == null)
                                     continue
-                                if (installInfo.mcVersion >= MCVersion(20, 4) && name.matches(Regex("net\\.neoforged:neoforge:.*:client"))) {
+                                if (installInfo.mcVersion >= MCVersion(1, 20, 4) && name.matches(Regex("net\\.neoforged:neoforge:.*:client"))) {
                                     continue
                                 }
 
@@ -230,7 +234,7 @@ object NeoForgeModloader : Modloader(ModloaderType.NEOFORGE) {
                                     logger.debug("Copying {} from installer to {}", zipPath, target)
                                     Files.newOutputStream(target).use { zipFile.getInputStream(entry).copyTo(it) }
                                 } else if (!url.isNullOrBlank()) {
-                                    DownloadRequest(DownloadInfo(name, url, size, DownloadInfo.Checksums(sha1 = sha1)), libraryDownloadPath).execute()
+                                    downloadRequest(DownloadInfo(name, url, size, DownloadInfo.Checksums(sha1 = sha1)), libraryDownloadPath).execute()
                                 }
                             }
 
@@ -246,7 +250,7 @@ object NeoForgeModloader : Modloader(ModloaderType.NEOFORGE) {
                             versionProfileJson = versionProfileJson.set("arguments", arguments)
 
                             val libs = versionProfileJson["libraries"]?.jsonArray?.toMutableList() ?: mutableListOf()
-                            if (installInfo.mcVersion >= MCVersion(20, 4)) {
+                            if (installInfo.mcVersion >= MCVersion(1, 20, 4)) {
                                 libs.removeIf { it.jsonObject["name"]?.jsonPrimitive?.content?.matches(Regex("net\\.neoforged:neoforge:.*:client")) ?: false }
                             }
                             libs.add(

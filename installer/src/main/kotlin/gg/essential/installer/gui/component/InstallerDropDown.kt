@@ -21,14 +21,14 @@ import gg.essential.elementa.components.Window
 import gg.essential.elementa.constraints.*
 import gg.essential.elementa.dsl.*
 import gg.essential.elementa.effects.ScissorEffect
-import gg.essential.elementa.layoutdsl.*
-import gg.essential.elementa.state.v2.ListState
-import gg.essential.elementa.state.v2.MutableState
-import gg.essential.elementa.state.v2.State
-import gg.essential.elementa.state.v2.combinators.map
-import gg.essential.elementa.state.v2.memo
-import gg.essential.elementa.state.v2.mutableStateOf
-import gg.essential.elementa.state.v2.stateOf
+import gg.essential.elementa.unstable.layoutdsl.*
+import gg.essential.elementa.unstable.state.v2.ListState
+import gg.essential.elementa.unstable.state.v2.MutableState
+import gg.essential.elementa.unstable.state.v2.State
+import gg.essential.elementa.unstable.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.memo
+import gg.essential.elementa.unstable.state.v2.mutableStateOf
+import gg.essential.elementa.unstable.state.v2.stateOf
 import gg.essential.installer.gui.*
 
 // Heavily adapted from EssentialDropDown
@@ -131,7 +131,7 @@ class InstallerDropDown<T>(
 
                 floatingBox(Modifier.fillWidth().color(InstallerPalette.DROPDOWN_BACKGROUND).effect { ScissorEffect() }.animateHeight(heightConstraintState, 0.25f)) {
                     val scrollBar: UIComponent
-                    val scrollComponent = scrollable(Modifier.fillWidth().limitHeight(), vertical = true, pixelsPerScroll = 30f) {
+                    val scrollComponent = scrollable(Modifier.fillWidth().limitHeight(), vertical = true) {
                         // The top padding and END float position are there to add a 1px "divider" above all the elements, like there is between them
                         column(Modifier.fillWidth().childBasedHeight(padding = 0.5f /* padding is multiplied by 2, but we only want 1 at the top*/), Arrangement.spacedBy(1f, FloatPosition.END)) {
                             forEach(items) {

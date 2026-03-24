@@ -15,7 +15,7 @@
 
 package gg.essential.installer.install
 
-import gg.essential.elementa.state.v2.stateOf
+import gg.essential.elementa.unstable.state.v2.stateOf
 
 /**
  * Simple installation step that always returns the provided error.

@@ -50,10 +50,10 @@ sealed interface ModVersionProvider {
     val type: String
     val logger: Logger
 
-    suspend fun getAvailableModVersions(): Map<MCVersion, Map<ModloaderType, ModVersions>>
+    suspend fun getAvailableModVersions(): Map<MCVersion, Map<ModloaderType, ModVersions?>>
 
     /*
-    Intended for internal essential use. Uses the old installer's endpoint. A custom endpoint for new installer to come later.
+    Intended for internal essential use.
      */
     @Serializable
     @SerialName("url")
@@ -64,35 +64,30 @@ sealed interface ModVersionProvider {
         @Transient
         override val logger: Logger = LoggerFactory.getLogger("URL Mod Version Provider")
 
-        override suspend fun getAvailableModVersions(): Map<MCVersion, Map<ModloaderType, ModVersions>> {
+        override suspend fun getAvailableModVersions(): Map<MCVersion, Map<ModloaderType, ModVersions?>> {
             return withContext(Dispatchers.IO) {
                 logger.info("Fetching mod versions from URL: $versionURL and download info from $downloadInfoURL!")
-                val response = HttpManager.httpGet(versionURL)
-                val platformVersions = response.decode<List<Version>>(snakeCaseJson)
+                val versionResponse = HttpManager.httpGet(versionURL)
+                val platformVersions = versionResponse.decode<List<Version>>(snakeCaseJson).groupBy(Version::minecraftVersion, Version::type)
 
-                val versions: MutableMap<MCVersion, MutableMap<ModloaderType, ModVersions>> = mutableMapOf()
-                platformVersions.forEach { (mcVersion, modloaderType) ->
-                    val infoURL = downloadInfoURL
-                        .replace("{modloader}", modloaderType.name.lowercase())
-                        .replace("{mc-version}", mcVersion.toString())
-                        .replace("{mc-version-dashed}", mcVersion.toString().replace('.', '-'))
-                    try {
-                        val httpResponse = HttpManager.httpGet(infoURL)
-                        if (httpResponse.status.isSuccess()) {
-                            val modDownloadInfo = httpResponse.decode<ModDownloadInfo>(snakeCaseJson)
-                            val downloadInfo = DownloadInfo(BRAND, modDownloadInfo.url, true, DownloadInfo.Checksums(md5 = modDownloadInfo.checksum))
-                            val modVersion = ModVersion("$modloaderType-$mcVersion", "", downloadInfo) // Version is blank because we don't have that info
+                val downloadResponse = HttpManager.httpGet(downloadInfoURL)
+                val downloadMap = downloadResponse.decode<DownloadResponse>(snakeCaseJson).stable
 
-                            versions.getOrPut(mcVersion) { mutableMapOf() }[modloaderType] = ModVersions(modVersion, null, listOf(modVersion))
-                        }
-                    } catch (e: Exception) {
-                        logger.warn("Error when calling $infoURL", e)
+                val versions = platformVersions.mapValues { (mcVersion, modloaderTypes) ->
+                    modloaderTypes.associateWith { modloaderType ->
+                        val id = "${modloaderType.name.lowercase()}_${mcVersion.toString().replace('.', '-')}"
+                        val download = downloadMap[id] ?: return@associateWith null
+                        val downloadInfo = DownloadInfo(BRAND, download.url, true, DownloadInfo.Checksums(md5 = download.checksum))
+                        ModVersions(ModVersion(id, download.version, downloadInfo))
                     }
-
                 }
 
-                val versionsString = versions.entries.joinToString("; ") { (mcVersion, map) -> "$mcVersion-[${map.entries.joinToString(",") { (type, versions) -> "$type-${(versions.latestFeatured ?: versions.latest).version}" }}]"  }
-                logger.info("Versions: $versionsString")
+                val versionsString = versions.entries.chunked(5).joinToString("\n") {
+                    it.joinToString("; ") { (mcVersion, map) ->
+                        "$mcVersion-[${map.entries.joinToString(",") { (type, versions) -> "$type-${(versions?.latestFeatured ?: versions?.latest)?.version}" }}]"
+                    }
+                }
+                logger.info("Versions:\n$versionsString")
                 versions
             }
         }
@@ -105,7 +100,13 @@ sealed interface ModVersionProvider {
         )
 
         @Serializable
+        private data class DownloadResponse(
+            val stable: Map<String, ModDownloadInfo>
+        )
+
+        @Serializable
         private data class ModDownloadInfo(
+            val version: String,
             val url: String,
             val checksum: String, // MD5
         )
@@ -131,7 +132,7 @@ sealed interface ModVersionProvider {
         override val logger: Logger = LoggerFactory.getLogger("Modrinth Mod Version Provider ($projectSlugOrId)")
 
 
-        override suspend fun getAvailableModVersions(): Map<MCVersion, Map<ModloaderType, ModVersions>> {
+        override suspend fun getAvailableModVersions(): Map<MCVersion, Map<ModloaderType, ModVersions?>> {
             return withContext(Dispatchers.IO) {
                 logger.info("Fetching mod versions from Modrinth, project id/slug $projectSlugOrId!")
                 val response = HttpManager.httpGet("https://api.modrinth.com/v2/project/$projectSlugOrId/version")
@@ -161,7 +162,9 @@ sealed interface ModVersionProvider {
                         )
                     }
                 }
-                val versionsString = versionsMap.entries.joinToString("; ") { (mcVersion, map) -> "$mcVersion-[${map.entries.joinToString(",") { (type, versions) -> "$type-${(versions.latestFeatured ?: versions.latest).version}" }}]"  }
+                val versionsString = versionsMap.entries.joinToString("; ") { (mcVersion, map) ->
+                    "$mcVersion-[${map.entries.joinToString(",") { (type, versions) -> "$type-${(versions.latestFeatured ?: versions.latest).version}" }}]"
+                }
                 logger.info("Versions: $versionsString")
                 versionsMap
             }
@@ -226,7 +229,7 @@ sealed interface ModVersionProvider {
         override val logger: Logger = LoggerFactory.getLogger("File Mod Version Provider ($path)")
 
 
-        override suspend fun getAvailableModVersions(): Map<MCVersion, Map<ModloaderType, ModVersions>> {
+        override suspend fun getAvailableModVersions(): Map<MCVersion, Map<ModloaderType, ModVersions?>> {
             return withContext(Dispatchers.IO) {
                 javaClass.getResourceAsStream(path).use { json.decodeFromStream(it ?: throw IllegalStateException("Resource not found: $path")) }
             }

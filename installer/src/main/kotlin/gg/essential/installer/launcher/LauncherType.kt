@@ -15,7 +15,7 @@
 
 package gg.essential.installer.launcher
 
-import gg.essential.elementa.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.combinators.map
 import gg.essential.installer.gui.*
 import gg.essential.installer.gui.image.*
 import gg.essential.installer.launcher.curseforge.CurseForge

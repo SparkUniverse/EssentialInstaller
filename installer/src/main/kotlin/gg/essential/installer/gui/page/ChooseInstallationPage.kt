@@ -15,8 +15,10 @@
 
 package gg.essential.installer.gui.page
 
-import gg.essential.elementa.layoutdsl.*
-import gg.essential.elementa.state.v2.stateOf
+import gg.essential.elementa.unstable.layoutdsl.*
+import gg.essential.elementa.unstable.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.combinators.not
+import gg.essential.elementa.unstable.state.v2.stateOf
 import gg.essential.installer.gui.*
 import gg.essential.installer.gui.component.*
 import gg.essential.installer.launcher.InstallInfo
@@ -62,24 +64,28 @@ class ChooseInstallationPage<I : Installation, NI : InstallInfo.New, EI : Instal
 
     private fun LayoutScope.installationButton(installation: I) {
         val supported = installation.isSupported
-        val nameColor = if (supported) InstallerPalette.TEXT else InstallerPalette.TEXT_DISABLED
-        val versionColor = if (supported) InstallerPalette.TEXT_DARK else InstallerPalette.TEXT_ERROR_DISABLED
-        val tooltipModifier = if (supported) Modifier else Modifier.hoverTooltip(
-            "Version not supported",
-            185f,
-            textModifier = Modifier.color(InstallerPalette.TEXT_ERROR),
-            position = Tooltip.Position.LEFT
+        val nameColor = supported.map { if (it) InstallerPalette.TEXT else InstallerPalette.TEXT_DISABLED }
+        val versionColor = supported.map { if (it) InstallerPalette.TEXT_DARK else InstallerPalette.TEXT_ERROR_DISABLED }
+        val tooltipModifier = Modifier.whenTrue(
+            supported, Modifier, Modifier.hoverTooltip(
+                "Version not supported",
+                185f,
+                textModifier = Modifier.color(InstallerPalette.TEXT_ERROR),
+                position = Tooltip.Position.LEFT
+            )
         )
 
-        button(ButtonStyle.GRAY, Modifier.width(320f).height(48f) then tooltipModifier, disabled = !supported) {
+        button(stateOf(ButtonStyle.GRAY), Modifier.width(320f).height(48f) then tooltipModifier, disabled = !supported) {
             row(Modifier.fillWidth(padding = 16f), Arrangement.spacedBy(16f, FloatPosition.START)) {
                 box(Modifier.width(174f)) {
                     installerBoldText(installation.name, Modifier.color(nameColor).alignHorizontal(Alignment.Start), truncateIfTooSmall = true, showTooltipForTruncatedText = true)
                 }
-                installerText(installation.versionString, Modifier.color(versionColor))
+                box(Modifier.fillRemainingWidth()) {
+                    installerText(installation.versionString, Modifier.color(versionColor).alignHorizontal(Alignment.Start), truncateIfTooSmall = true, showTooltipForTruncatedText = true)
+                }
             }
         }.onLeftClick {
-            if (!supported) return@onLeftClick
+            if (!supported.getUntracked()) return@onLeftClick
             PageHandler.navigateTo(InstallationPage(launcher, installation))
         }
     }

@@ -15,11 +15,11 @@
 
 package gg.essential.installer.minecraft
 
-import gg.essential.elementa.state.v2.ListState
-import gg.essential.elementa.state.v2.combinators.map
-import gg.essential.elementa.state.v2.mutableListStateOf
-import gg.essential.elementa.state.v2.setAll
-import gg.essential.elementa.state.v2.toListState
+import gg.essential.elementa.unstable.state.v2.ListState
+import gg.essential.elementa.unstable.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.mutableListStateOf
+import gg.essential.elementa.unstable.state.v2.setAll
+import gg.essential.elementa.unstable.state.v2.toListState
 import gg.essential.installer.download.HttpManager
 import gg.essential.installer.download.decode
 import gg.essential.installer.logging.Logging
@@ -37,17 +37,17 @@ import org.intellij.lang.annotations.Language
 import java.util.regex.Pattern
 
 /**
- * Represent a minecraft version, supports versions 1.0.0 and higher.
- *
- * Does not support Minecraft 2.0 and higher if Mojang changes their mind.
+ * Represent a minecraft version, supports versions 1.x.y and 26.x.y - 99.x.y. Also supports snapshots for the latter versions.
  */
 @Serializable(with = MCVersion.Serializer::class)
 data class MCVersion(
     val major: Int,
     val minor: Int,
+    val patch: Int,
+    val snapshot: Int? = null
 ) : Comparable<MCVersion> {
     override fun toString(): String {
-        return if (minor == 0) "1.$major" else "1.$major.$minor"
+        return (if (patch == 0) "$major.$minor" else "$major.$minor.$patch") + if (snapshot != null) "-snapshot-$snapshot" else ""
     }
 
     override fun compareTo(other: MCVersion) = COMPARATOR.compare(this, other)
@@ -57,109 +57,26 @@ data class MCVersion(
             ignoreUnknownKeys = true
         }
 
+        // Accepts either old 1.x.y format or modern <year>.<number>.<patch>,
+        // where year must be between 20 and 99, to prevent accidental matching elsewhere
         @Language("RegExp")
-        private val PATTERN: Pattern = Pattern.compile("1\\.(?<major>\\d+)(\\.(?<minor>\\d+))?")
+        private val mcVersionRegex = "(?<major>(1|[2-9]\\d))\\.(?<minor>\\d+)(\\.(?<patch>\\d+))?(-snapshot-(?<snapshot>\\d+))?"
+        @Language("RegExp")
+        private val PATTERN: Pattern = Pattern.compile(mcVersionRegex)
         @Language("RegExp")
         private val STRICT_PATTERN: Pattern = Pattern.compile("^$PATTERN$")
 
+        // Either <year>w<week><letter> or the new <version>-snapshot-<digit>
         @Language("RegExp")
-        val SNAPSHOT_PATTERN: Pattern = Pattern.compile("^\\d+w\\d+\\w\$")
+        val OLD_SNAPSHOT_PATTERN: Pattern = Pattern.compile("^(\\d+w\\d+\\w)$")
         @Language("RegExp")
         val BETA_PATTERN: Pattern = Pattern.compile("^b1.*$")
         @Language("RegExp")
-        val ALPHA_PATTERN: Pattern = Pattern.compile("^(a1|inf-|c0|rd-).*\$")
+        val ALPHA_PATTERN: Pattern = Pattern.compile("^(a1|inf-|c0|rd-).*$")
 
-        val COMPARATOR = compareBy<MCVersion> { it.major }.thenBy { it.minor }
+        val COMPARATOR = compareBy<MCVersion> { it.major }.thenBy { it.minor }.thenBy { it.patch }.thenBy { it.snapshot }
 
-        private val knownVersionsMutable = mutableListStateOf(
-            //<editor-fold defaultstate="collapsed" desc="All confirmed versions as of 2024-02-20">
-            MCVersion(20, 4),
-            MCVersion(20, 3),
-            MCVersion(20, 2),
-            MCVersion(20, 1),
-            MCVersion(20, 0),
-            MCVersion(19, 4),
-            MCVersion(19, 3),
-            MCVersion(19, 2),
-            MCVersion(19, 1),
-            MCVersion(19, 0),
-            MCVersion(18, 2),
-            MCVersion(18, 1),
-            MCVersion(18, 0),
-            MCVersion(17, 1),
-            MCVersion(17, 0),
-            MCVersion(16, 5),
-            MCVersion(16, 4),
-            MCVersion(16, 3),
-            MCVersion(16, 2),
-            MCVersion(16, 1),
-            MCVersion(16, 0),
-            MCVersion(15, 2),
-            MCVersion(15, 1),
-            MCVersion(15, 0),
-            MCVersion(14, 4),
-            MCVersion(14, 3),
-            MCVersion(14, 2),
-            MCVersion(14, 1),
-            MCVersion(14, 0),
-            MCVersion(13, 2),
-            MCVersion(13, 1),
-            MCVersion(13, 0),
-            MCVersion(12, 2),
-            MCVersion(12, 1),
-            MCVersion(12, 0),
-            MCVersion(11, 2),
-            MCVersion(11, 1),
-            MCVersion(11, 0),
-            MCVersion(10, 2),
-            MCVersion(10, 1),
-            MCVersion(10, 0),
-            MCVersion(9, 4),
-            MCVersion(9, 3),
-            MCVersion(9, 2),
-            MCVersion(9, 1),
-            MCVersion(9, 0),
-            MCVersion(8, 9),
-            MCVersion(8, 8),
-            MCVersion(8, 7),
-            MCVersion(8, 6),
-            MCVersion(8, 5),
-            MCVersion(8, 4),
-            MCVersion(8, 3),
-            MCVersion(8, 2),
-            MCVersion(8, 1),
-            MCVersion(8, 0),
-            MCVersion(7, 10),
-            MCVersion(7, 9),
-            MCVersion(7, 8),
-            MCVersion(7, 7),
-            MCVersion(7, 6),
-            MCVersion(7, 5),
-            MCVersion(7, 4),
-            MCVersion(7, 3),
-            MCVersion(7, 2),
-            MCVersion(6, 4),
-            MCVersion(6, 2),
-            MCVersion(6, 1),
-            MCVersion(5, 2),
-            MCVersion(5, 1),
-            MCVersion(5, 0),
-            MCVersion(4, 7),
-            MCVersion(4, 6),
-            MCVersion(4, 5),
-            MCVersion(4, 4),
-            MCVersion(4, 2),
-            MCVersion(3, 2),
-            MCVersion(3, 1),
-            MCVersion(2, 5),
-            MCVersion(2, 4),
-            MCVersion(2, 3),
-            MCVersion(2, 2),
-            MCVersion(2, 1),
-            MCVersion(1, 0),
-            MCVersion(0, 0),
-            //</editor-fold>
-        )
+        private val knownVersionsMutable = mutableListStateOf<MCVersion>()
         val knownVersions: ListState<MCVersion>
             get() = knownVersionsMutable.map { it.sorted() }.toListState()
 
@@ -172,8 +89,8 @@ data class MCVersion(
          *  @param ignoreKnownVersions If true, does not check if the parsed version is in the list of known versions
          */
         fun fromString(version: String, strict: Boolean = true, ignoreKnownVersions: Boolean = false): MCVersion? {
-            // If we are non-strict, we still don't parse snapshot, beta and alpha versions, to prevent accidental matches.
-            if (!strict && (SNAPSHOT_PATTERN.matcher(version).find() || BETA_PATTERN.matcher(version).find() || ALPHA_PATTERN.matcher(version).find())) {
+            // If we are non-strict, we still don't parse old snapshot format, beta and alpha versions, to prevent accidental matches.
+            if (!strict && (version.contains("craftmine") || OLD_SNAPSHOT_PATTERN.matcher(version).find() || BETA_PATTERN.matcher(version).find() || ALPHA_PATTERN.matcher(version).find())) {
                 return null
             }
 
@@ -186,8 +103,10 @@ data class MCVersion(
 
             val major = matcher.group("major")?.toInt() ?: return null
             val minor = matcher.group("minor")?.toInt() ?: 0
+            val patch = matcher.group("patch")?.toInt() ?: 0
+            val snapshot = matcher.group("snapshot")?.toInt()
 
-            val mcVersion = MCVersion(major, minor)
+            val mcVersion = MCVersion(major, minor, patch, snapshot)
 
             if (!ignoreKnownVersions && !knownVersions.getUntracked().contains(mcVersion)) {
                 Logging.logger.warn("Parsed version $mcVersion from '$version' was not a valid version?")
@@ -208,10 +127,10 @@ data class MCVersion(
                 val versions = HttpManager.httpGet(MetadataManager.installer.urls.minecraftVersions)
                     .decode<Versions>(json)
                     .versions
-                    .filter { it.type == "release" }
                     .mapNotNull { fromString(it.id, ignoreKnownVersions = true) }
                 knownVersionsMutable.setAll(versions)
-                Logging.logger.info("Successfully refreshed versions. New known versions: " + versions.joinToString(", "))
+                val str = versions.chunked(20).joinToString("\n") { it.joinToString(", ") }
+                Logging.logger.info("Successfully refreshed versions. New known versions:\n$str")
             } catch (e: Exception) {
                 Logging.logger.info("Error refreshing minecraft versions!", e)
             }

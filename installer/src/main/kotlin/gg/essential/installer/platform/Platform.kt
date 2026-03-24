@@ -18,8 +18,8 @@ package gg.essential.installer.platform
 import com.sun.jna.platform.win32.WinReg
 import dev.caoimhe.jnapple.appkit.NSRunningApplication
 import dev.caoimhe.jnapple.foundation.NSString
-import gg.essential.elementa.state.v2.mutableSetState
-import gg.essential.elementa.state.v2.setAll
+import gg.essential.elementa.unstable.state.v2.mutableSetState
+import gg.essential.elementa.unstable.state.v2.setAll
 import gg.essential.installer.launcher.LauncherType
 import gg.essential.installer.logging.Logging.logger
 import gg.essential.installer.util.RegistryPath

@@ -50,7 +50,7 @@ data class ModloaderVersion(
     companion object {
         // Note if anyone ever edits this: Order inside the matching group matters (specifically for first one), as we would otherwise not parse x.y.z.w correctly, we would match the x.y.z first
         private val FORGE_VERSION_REGEX = Pattern.compile("(?<version>(\\d+\\.\\d+|[02-9]|\\d{2,})\\.\\d+\\.\\d+)")
-        private val NEOFORGE_VERSION_REGEX = Pattern.compile("(?<version>(\\d+\\.\\d+\\.\\d+))")
+        private val NEOFORGE_VERSION_REGEX = Pattern.compile("(?<version>((\\d+\\.)?\\d+\\.\\d+\\.\\d+))")
 
 
         fun fromVersion(type: ModloaderType, fullVersion: String, providedNumericVersion: String? = null): ModloaderVersion {
@@ -75,7 +75,8 @@ data class ModloaderVersion(
                 */
                 val numericVersion = when (type) {
                     ModloaderType.FABRIC, ModloaderType.QUILT -> {
-                        val split = fullVersion.split("-")
+                        // Remove snapshot dashes from newer versions before splitting
+                        val split = fullVersion.substringBefore("-snapshot-").split("-")
 
                         if (split.size >= 4) { // Probably fabric-loader-0.15.11-1.20.4 (from vanilla launcher)
                             split[2]
@@ -104,6 +105,8 @@ data class ModloaderVersion(
                         val matcher = NEOFORGE_VERSION_REGEX.matcher(fullVersion)
                         if (matcher.find()) {
                             matcher.group("version")
+                        } else if (fullVersion.contains("craftmine")) {
+                            fullVersion.substringBefore('-')
                         } else {
                             ""
                         }

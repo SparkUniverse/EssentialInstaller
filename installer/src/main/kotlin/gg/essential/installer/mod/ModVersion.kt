@@ -25,5 +25,7 @@ import kotlinx.serialization.Serializable
 data class ModVersion(
     val id: String,
     val version: String,
-    val downloadInfo: DownloadInfo,
-)
+    val downloadInfo: suspend () -> DownloadInfo,
+) {
+    constructor(id: String, version: String, downloadInfo: DownloadInfo) : this(id, version, { downloadInfo })
+}

@@ -19,19 +19,19 @@ import gg.essential.elementa.UIComponent
 import gg.essential.elementa.components.UICircle
 import gg.essential.elementa.constraints.*
 import gg.essential.elementa.dsl.*
-import gg.essential.elementa.layoutdsl.*
-import gg.essential.elementa.state.v2.ReferenceHolderImpl
-import gg.essential.elementa.state.v2.State
-import gg.essential.elementa.state.v2.combinators.isNotEmpty
-import gg.essential.elementa.state.v2.combinators.map
-import gg.essential.elementa.state.v2.effect
-import gg.essential.elementa.state.v2.memo
-import gg.essential.elementa.state.v2.mutableStateOf
-import gg.essential.elementa.state.v2.onChange
-import gg.essential.elementa.state.v2.stateOf
-import gg.essential.elementa.state.v2.toListState
-import gg.essential.elementa.state.v2.toV2
-import gg.essential.elementa.util.focusedState
+import gg.essential.elementa.unstable.layoutdsl.*
+import gg.essential.elementa.unstable.state.v2.ReferenceHolderImpl
+import gg.essential.elementa.unstable.state.v2.State
+import gg.essential.elementa.unstable.state.v2.combinators.isNotEmpty
+import gg.essential.elementa.unstable.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.effect
+import gg.essential.elementa.unstable.state.v2.memo
+import gg.essential.elementa.unstable.state.v2.mutableStateOf
+import gg.essential.elementa.unstable.state.v2.onChange
+import gg.essential.elementa.unstable.state.v2.stateOf
+import gg.essential.elementa.unstable.state.v2.toListState
+import gg.essential.elementa.unstable.state.v2.toV2
+import gg.essential.elementa.unstable.util.focusedState
 import gg.essential.installer.gui.*
 import gg.essential.installer.gui.component.*
 import gg.essential.installer.gui.component.text.*
@@ -70,7 +70,7 @@ class InstallationPage<I : Installation, NI : InstallInfo.New, EI : InstallInfo.
 
     // overridden in constructor, but initialized here because of other states that use them
     private val name = mutableStateOf("")
-    private val mcVersion = mutableStateOf(MCVersion(0, 0))
+    private val mcVersion = mutableStateOf(MCVersion(1, 0, 0))
     private val selectedModloader = mutableStateOf<Modloader?>(null)
 
     private val referenceHolder = ReferenceHolderImpl()
@@ -472,12 +472,12 @@ class InstallationPage<I : Installation, NI : InstallInfo.New, EI : InstallInfo.
         row(Modifier.hoverScope() then tooltipModifier, Arrangement.spacedBy(8f)) {
             box(Modifier.width(16f).heightAspect(1f)) {
                 UICircle(8f)(
-                    Modifier.alignBoth(Alignment.Center)
+                    Modifier.alignBoth(Alignment.Start(8f))
                         .color(memo { if (disabled()) InstallerPalette.RADIAL_SELECTOR_DISABLED else if (resolvedModloader() == modloader) InstallerPalette.RADIAL_SELECTOR_SELECTED else InstallerPalette.RADIAL_SELECTOR })
                         .hoverColor(memo { if (disabled()) InstallerPalette.RADIAL_SELECTOR_DISABLED else if (resolvedModloader() == modloader) InstallerPalette.RADIAL_SELECTOR_SELECTED else InstallerPalette.RADIAL_SELECTOR_HOVER })
                 ) {
                     if_(resolvedModloader.map { it == modloader }) {
-                        UICircle(4f)(Modifier.alignBoth(Alignment.Center).color(InstallerPalette.RADIAL_SELECTOR_INNER))
+                        UICircle(4f)(Modifier.alignBoth(Alignment.End).color(InstallerPalette.RADIAL_SELECTOR_INNER))
                     }
                 }
             }

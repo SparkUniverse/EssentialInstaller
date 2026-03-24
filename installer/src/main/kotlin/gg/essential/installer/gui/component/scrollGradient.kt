@@ -17,10 +17,10 @@ package gg.essential.installer.gui.component
 
 import gg.essential.elementa.components.ScrollComponent
 import gg.essential.elementa.components.UIBlock
-import gg.essential.elementa.layoutdsl.*
-import gg.essential.elementa.state.v2.memo
-import gg.essential.elementa.state.v2.mutableStateOf
-import gg.essential.elementa.state.v2.toV2
+import gg.essential.elementa.unstable.layoutdsl.*
+import gg.essential.elementa.unstable.state.v2.memo
+import gg.essential.elementa.unstable.state.v2.mutableStateOf
+import gg.essential.elementa.unstable.state.v2.toV2
 import gg.essential.elementa.utils.withAlpha
 import java.awt.Color
 

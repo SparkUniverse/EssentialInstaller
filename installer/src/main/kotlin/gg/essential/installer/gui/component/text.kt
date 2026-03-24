@@ -17,12 +17,12 @@ package gg.essential.installer.gui.component
 
 import gg.essential.elementa.dsl.*
 import gg.essential.elementa.font.FontProvider
-import gg.essential.elementa.layoutdsl.*
+import gg.essential.elementa.unstable.layoutdsl.*
 import gg.essential.elementa.state.BasicState
-import gg.essential.elementa.state.v2.State
-import gg.essential.elementa.state.v2.combinators.map
-import gg.essential.elementa.state.v2.stateOf
-import gg.essential.elementa.state.v2.toV1
+import gg.essential.elementa.unstable.state.v2.State
+import gg.essential.elementa.unstable.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.stateOf
+import gg.essential.elementa.unstable.state.v2.toV1
 import gg.essential.installer.NvgFontProvider
 import gg.essential.installer.gui.*
 import gg.essential.installer.util.Fonts

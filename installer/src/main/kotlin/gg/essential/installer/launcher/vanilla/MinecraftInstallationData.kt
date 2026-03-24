@@ -46,10 +46,18 @@ data class MinecraftInstallationData(
             ModloaderType.NONE_MODERN -> MCVersion.fromString(lastVersionId)
             ModloaderType.FORGE -> MCVersion.fromString(lastVersionId.split('-').first()) // Example: 1.18.2-forge-40.0.12
             ModloaderType.NEOFORGE -> {
-                val numeric = ModloaderVersion.fromVersion(ModloaderType.NEOFORGE, lastVersionId).numeric
-                MCVersion.fromString("1." + numeric.substring(0..<numeric.lastIndexOf('.')))
-            } // Example: neoforge-21.5.14-beta
-            ModloaderType.FABRIC -> MCVersion.fromString(lastVersionId.split('-').last()) // Example: fabric-loader-0.15.3-1.20.4
+                val (full, numeric) = ModloaderVersion.fromVersion(ModloaderType.NEOFORGE, lastVersionId)
+                var mcVersionString = numeric.substring(0..<numeric.lastIndexOf('.')) // Drop last number
+                if (mcVersionString.count { it == '.' } < 2) {
+                    mcVersionString = "1.$mcVersionString" // Prefix 1. for versions < 26.x
+                }
+                mcVersionString = "$mcVersionString-${full.substringAfter('+', "")}"
+                MCVersion.fromString(mcVersionString)
+            } // Example: neoforge-21.5.14-beta, neoforge-26.1.0.0-alpha.1+snapshot-1
+            ModloaderType.FABRIC -> MCVersion.fromString(
+                lastVersionId.replaceFirst("fabric-loader-", "").substringAfter("-", "") // Example: fabric-loader-0.15.3-1.20.4, fabric-loader-0.18.4-26.1-snapshot-6
+            )
+
             else -> MCVersion.fromString(lastVersionId, false) // Try parsing non-strictly, to at least get the version hopefully
         }
 

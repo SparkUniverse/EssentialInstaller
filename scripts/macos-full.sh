@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/bin/bash
+
+set -oe pipefail
 
 cd installer || exit
 

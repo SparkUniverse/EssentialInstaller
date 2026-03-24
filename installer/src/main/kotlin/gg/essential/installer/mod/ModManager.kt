@@ -15,15 +15,15 @@
 
 package gg.essential.installer.mod
 
-import gg.essential.elementa.state.v2.State
-import gg.essential.elementa.state.v2.combinators.map
-import gg.essential.elementa.state.v2.filter
-import gg.essential.elementa.state.v2.memo
-import gg.essential.elementa.state.v2.mutableStateOf
-import gg.essential.elementa.state.v2.toListState
-import gg.essential.installer.download.DownloadRequest
+import gg.essential.elementa.unstable.state.v2.State
+import gg.essential.elementa.unstable.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.filter
+import gg.essential.elementa.unstable.state.v2.memo
+import gg.essential.elementa.unstable.state.v2.mutableStateOf
+import gg.essential.elementa.unstable.state.v2.toListState
 import gg.essential.installer.download.util.DownloadInfo
 import gg.essential.installer.install.InstallSteps
+import gg.essential.installer.install.downloadRequest
 import gg.essential.installer.install.installationStep
 import gg.essential.installer.isNoModInstallMode
 import gg.essential.installer.launcher.InstallInfo
@@ -37,6 +37,9 @@ import gg.essential.installer.minecraft.MCVersion
 import gg.essential.installer.modloader.Modloader
 import gg.essential.installer.modloader.ModloaderType
 import gg.essential.installer.platform.Platform
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -62,7 +65,7 @@ import kotlin.io.path.pathString
  */
 object ModManager {
 
-    private val availableVersions = mutableStateOf(mapOf<MCVersion, Map<ModloaderType, ModVersions>>())
+    private val availableVersions = mutableStateOf(mapOf<MCVersion, Map<ModloaderType, ModVersions?>>())
     private val modMetadata = mutableStateOf<ModMetadata?>(null)
 
     private val json = Json {
@@ -77,18 +80,29 @@ object ModManager {
             logger.warn("Running in no mod install mode! This means mod versions will not actually be loaded!")
             MCVersion.refreshKnownMcVersions() // Hack, since this is otherwise refreshed after this method...
             val version = ModVersion("", "", DownloadInfo("", "", true))
-            val map = Modloader.entries.associate { it.type to ModVersions(version, null, listOf(version)) }
-            availableVersions.set(MCVersion.knownVersions.filter { it >= MCVersion(8, 9) }.getUntracked().associateWith { map })
+            val map = Modloader.entries.associate { it.type to ModVersions(version) }
+            availableVersions.set(MCVersion.knownVersions.filter { it >= MCVersion(1, 8, 9) }.getUntracked().associateWith { map })
             return
         }
 
+        coroutineScope {
+            awaitAll(
+                async { loadVersions() },
+                async { loadMetadata() },
+            )
+        }
+
+        if (availableVersions.getUntracked().isEmpty()) throw IllegalStateException("No mod versions provider successfully loaded!")
+
+        logger.info("Loaded mod versions and metadata!")
+    }
+
+    private suspend fun loadVersions() {
         val dataProviders = MetadataManager.dataProviders
-
         logger.debug("Version provider: {}", dataProviders.modVersionProviderStrategy)
-
         val versionsMap = when (dataProviders.modVersionProviderStrategy) {
             DataProviderStrategy.ONLY_IF_ERROR -> {
-                var map = mapOf<MCVersion, Map<ModloaderType, ModVersions>>()
+                var map = mapOf<MCVersion, Map<ModloaderType, ModVersions?>>()
                 for (provider in dataProviders.modVersionProviders) {
                     try {
                         map = provider.getAvailableModVersions()
@@ -101,7 +115,7 @@ object ModManager {
             }
 
             DataProviderStrategy.COMBINE_WITH_PRIORITY -> {
-                val map = mutableMapOf<MCVersion, MutableMap<ModloaderType, ModVersions>>()
+                val map = mutableMapOf<MCVersion, MutableMap<ModloaderType, ModVersions?>>()
                 for (provider in dataProviders.modVersionProviders) {
                     try {
                         val versions = provider.getAvailableModVersions()
@@ -117,9 +131,13 @@ object ModManager {
                 map
             }
         }
-
         logger.debug("Versions: {}", versionsMap)
 
+        availableVersions.set(versionsMap)
+    }
+
+    private suspend fun loadMetadata() {
+        val dataProviders = MetadataManager.dataProviders
         logger.debug("Metadata provider: {}", dataProviders.modMetadataProviderStrategy)
 
         val metadata = when (dataProviders.modMetadataProviderStrategy) {
@@ -165,11 +183,7 @@ object ModManager {
 
         logger.debug("Metadata: {}", metadata)
 
-        if (versionsMap.isEmpty()) throw IllegalStateException("No mod versions provider successfully loaded!")
-
-        availableVersions.set(versionsMap)
         modMetadata.set(metadata)
-
     }
 
     fun getPromotedMCVersions() = modMetadata.map { it?.promotedMCVersions ?: listOf() }.toListState()
@@ -208,7 +222,7 @@ object ModManager {
         }
         val modVersion = installInfo.modVersion
         val downloadInfo = modVersion.downloadInfo
-        val filename = if(modVersion.version.isBlank()) "$BRAND-${installInfo.mcVersion}.jar" else "$BRAND-${modVersion.version}-${installInfo.mcVersion}.jar"
+        val filename = if (modVersion.version.isBlank()) "$BRAND-${installInfo.mcVersion}.jar" else "$BRAND-${modVersion.version}-${installInfo.mcVersion}.jar"
         val tempPath = Platform.tempFolder / filename
         val modsFolder = installInfo.gameFolder / "mods"
         val modPath = modsFolder / filename
@@ -216,7 +230,7 @@ object ModManager {
         return InstallSteps(
             prepareStep = null,
             // We assume mods are large files if no size was provided
-            downloadStep = DownloadRequest(downloadInfo, tempPath),
+            downloadStep = downloadRequest(BRAND, downloadInfo, tempPath),
             installStep = installationStep<Unit, Unit>(installStepName) {
                 logger.info("Making sure $modsFolder exists")
                 Files.createDirectories(modsFolder)
@@ -250,7 +264,7 @@ object ModManager {
                     // Create a temp file so that `toRealPath()` below doesn't fail...
                     // This is a dumb workaround for a quick change I made on the mod side,
                     // but the mod has now shipped already, so we work with what we have
-                    if(Files.notExists(installerMetadataPath)) {
+                    if (Files.notExists(installerMetadataPath)) {
                         Files.createFile(installerMetadataPath)
                     }
                     val pathBytes = installerMetadataPath.toRealPath().pathString.toByteArray() // uses UTF_8 by default

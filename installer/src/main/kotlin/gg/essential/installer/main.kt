@@ -29,6 +29,7 @@ import gg.essential.universal.UMinecraft
 import gg.essential.universal.UResolution
 import gg.essential.universal.UScreen
 import gg.essential.universal.standalone.UCWindow
+import gg.essential.universal.standalone.glfw.GLFWException
 import gg.essential.universal.standalone.glfw.Glfw
 import gg.essential.universal.standalone.runUniversalCraft
 import kotlinx.coroutines.CoroutineScope
@@ -44,6 +45,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTime
 
 private val width = System.getProperty("ui.width")?.toIntOrNull() ?: 1000
 private val height = System.getProperty("ui.height")?.toIntOrNull() ?: 600
@@ -69,19 +71,22 @@ fun main(args: Array<String>) {
         runUniversalCraft("", scaleFactor * width, scaleFactor * height, resizable) { window ->
             mainCoroutineScope = this
 
-            // More important stuff we need loaded before opening the installer
-            coroutineScope {
-                MetadataManager.loadDataProviders()
-                logger.info("Installer version: ${MetadataManager.installer.version}")
-                // Update the name once metadata is loaded
-                withContext(Dispatchers.Glfw) {
-                    GLFW.glfwSetWindowTitle(window.glfwWindow.glfwId, NAME)
-                    Platform.current().setWindowIcon(window)
-                }
+            val startupTime = measureTime {
+                Fonts.initFonts()
+                // More important stuff we need loaded before opening the installer
+                coroutineScope {
+                    MetadataManager.loadDataProviders()
+                    logger.info("Installer version: ${MetadataManager.installer.version}")
+                    // Update the name once metadata is loaded
+                    withContext(Dispatchers.Glfw) {
+                        GLFW.glfwSetWindowTitle(window.glfwWindow.glfwId, NAME)
+                        Platform.current().setWindowIcon(window)
+                    }
 
-                Launchers.detectLaunchers()
-                ModManager.loadModVersionsAndMetadata()
+                    Launchers.detectLaunchers()
+                }
             }
+            logger.info("Took ${startupTime.inWholeMilliseconds}ms, for pre-launch setup.")
 
             launch {
                 while (true) {
@@ -92,10 +97,14 @@ fun main(args: Array<String>) {
 
             // Less important stuff that can refresh as the installer is opening
             launch {
-                MCVersion.refreshKnownMcVersions() // First, we load known MC versions
-                ModloaderType.entries.forEach { it.modloader?.setup() } // Then we load modloader versions
-                Launchers.loadInstallations() // And then we load the installations
-                Fonts.loadFallback()
+                val time = measureTime {
+                    ModManager.loadModVersionsAndMetadata()
+                    MCVersion.refreshKnownMcVersions() // First, we load known MC versions
+                    ModloaderType.entries.forEach { it.modloader?.setup() } // Then we load modloader versions
+                    Launchers.loadInstallations() // And then we load the installations
+                    Fonts.loadFallback()
+                }
+                logger.info("Took ${time.inWholeMilliseconds}ms for post-launch setup.")
             }
 
             UMinecraft.guiScale = scaleFactor * (UResolution.viewportWidth / UResolution.windowWidth)
@@ -110,15 +119,18 @@ fun main(args: Array<String>) {
 
             displayScreen(window, width, height, PageHandler.createMainScreen())
         }
-    } catch (e: Exception) {
-        if (e.message?.endsWith(" (code ${GLFW.GLFW_API_UNAVAILABLE})") == true) {
-            logger.error("No OpenGL Support found. Exiting with appropriate exit code.")
+    } catch (e: GLFWException) {
+        val code = e.glfwErrorCode
+        val msg = e.glfwErrorMessage
+        logger.error("OpenGL Error: $msg (code $code)")
+        if (code == GLFW.GLFW_API_UNAVAILABLE) {
             exit(ExitCode.NO_OPEN_GL)
         } else {
-            logger.error("Uncaught error in UniversalCraft", e)
-            exit(ExitCode.UNKNOWN_ERROR)
+            exit(ExitCode.OPEN_GL_ERROR)
         }
-
+    } catch (e: Exception) {
+        logger.error("Uncaught error in UniversalCraft", e)
+        exit(ExitCode.UNKNOWN_ERROR)
     }
     if (requestRestart) {
         logger.info("Exiting with a restart request")
@@ -182,7 +194,7 @@ class ExitCode {
 
         const val UNKNOWN_ERROR = 100
         const val NO_OPEN_GL = 101
-        const val UNSUPPORTED_PATH = 102
+        const val OPEN_GL_ERROR = 102
 
         const val RESTART_REQUESTED = 200
     }

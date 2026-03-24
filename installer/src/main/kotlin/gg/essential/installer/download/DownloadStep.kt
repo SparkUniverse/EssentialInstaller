@@ -15,10 +15,10 @@
 
 package gg.essential.installer.download
 
-import gg.essential.elementa.state.v2.mutableStateOf
-import gg.essential.elementa.state.v2.stateOf
+import gg.essential.elementa.unstable.state.v2.mutableStateOf
+import gg.essential.elementa.unstable.state.v2.stateOf
 import gg.essential.installer.download.util.DownloadInfo
-import gg.essential.installer.install.StandaloneInstallStep
+import gg.essential.installer.install.InputInstallStep
 import gg.essential.installer.platform.Platform
 import gg.essential.installer.util.verifyChecksums
 import io.ktor.client.call.*
@@ -44,22 +44,22 @@ import kotlin.math.roundToInt
  *
  * By default, it overwrites the file already present at the path.
  */
-class DownloadRequest(
-    private val download: DownloadInfo,
+class DownloadStep(
+    private val name: String,
     private val path: Path,
     private val openOptions: List<OpenOption> = listOf(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING),
     private val block: HttpRequestBuilder.() -> Unit = {},
-) : StandaloneInstallStep("Downloading ${download.name}") {
+) : InputInstallStep<DownloadInfo>("Downloading $name") {
 
-    private val steps = if (download.size > 0) ceil(download.size.toFloat() / BUFFER_SIZE).toInt() else if (download.largeFile) 10 else 1
-    private val stepsCompletedMutable = mutableStateOf(0)
-
-    override val numberOfSteps = stateOf(steps)
-    override val stepsCompleted = stepsCompletedMutable
+    override val numberOfSteps = mutableStateOf(1)
+    override val stepsCompleted = mutableStateOf(0)
     override val currentStep = stateOf(this)
 
-    override suspend fun execute(input: Unit): Result<Unit> {
+    @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
+    override suspend fun execute(download: DownloadInfo): Result<Unit> {
         try {
+            val steps = if (download.size > 0) ceil(download.size.toFloat() / BUFFER_SIZE).toInt() else if (download.largeFile) 10 else 1
+            this.numberOfSteps.set(steps)
             withContext(Dispatchers.IO) {
                 val fullPath = if (path.isAbsolute) path else Platform.tempFolder / path
 
@@ -89,7 +89,7 @@ class DownloadRequest(
                             val bytes = packet.readByteArray()
                             outputStream.write(bytes)
                             totalReceived += bytes.size
-                            if (contentLength >= 0) {
+                            if (contentLength > 0) {
                                 progress = totalReceived / contentLength.toFloat()
                                 withContext(Dispatchers.Main) {
                                     stepsCompleted.set(floor(progress * steps).toInt())
@@ -125,9 +125,8 @@ class DownloadRequest(
     }
 
     override fun toString(): String {
-        return "DownloadRequest(openOptions=$openOptions, path=$path, download=$download)"
+        return "DownloadStep(name=$name, openOptions=$openOptions, path=$path)"
     }
-
 
     companion object {
         const val BUFFER_SIZE: Long = 1024 * 1024 // A sensible default, I think

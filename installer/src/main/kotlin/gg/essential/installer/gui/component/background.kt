@@ -15,7 +15,7 @@
 
 package gg.essential.installer.gui.component
 
-import gg.essential.elementa.layoutdsl.*
+import gg.essential.elementa.unstable.layoutdsl.*
 import gg.essential.installer.gui.*
 
 fun LayoutScope.installerBackground(block: LayoutScope.() -> Unit) {

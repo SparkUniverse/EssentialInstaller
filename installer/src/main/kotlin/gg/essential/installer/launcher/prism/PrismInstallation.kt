@@ -48,7 +48,7 @@ class PrismInstallation(
     }
 
     companion object {
-        val comparator = compareByDescending<PrismInstallation> { it.isSupported }
+        val comparator = compareByDescending<PrismInstallation> { it.isSupported.getUntracked() }
             .thenByDescending { it.config.lastTimePlayed }
     }
 

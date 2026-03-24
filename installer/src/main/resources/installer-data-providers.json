@@ -12,10 +12,14 @@
         {
             "type": "url",
             "versionURL": "https://api.essential.gg/v2/platforms",
-            "downloadInfoURL": "https://api.essential.gg/mods/v1/essential:essential-pinned/versions/stable/platforms/{modloader}_{mc-version-dashed}/download"
+            "downloadInfoURL": "https://downloads.essential.gg/v1/mods/essential/essential-pinned"
         }
     ],
     "modMetadataProviders": [
+        {
+            "type": "url",
+            "url": "https://mod-metadata.essential.gg/v2/mods/essential/installer/modloaders"
+        },
         {
             "type": "file",
             "path": "/mod-metadata.json"

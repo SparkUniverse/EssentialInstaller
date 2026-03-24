@@ -20,13 +20,13 @@ import gg.essential.elementa.components.UIRoundedRectangle
 import gg.essential.elementa.constraints.*
 import gg.essential.elementa.dsl.*
 import gg.essential.elementa.effects.ScissorEffect
-import gg.essential.elementa.layoutdsl.*
-import gg.essential.elementa.state.v2.combinators.map
-import gg.essential.elementa.state.v2.memo
-import gg.essential.elementa.state.v2.mutableStateOf
-import gg.essential.elementa.state.v2.stateOf
-import gg.essential.elementa.state.v2.toV1
-import gg.essential.elementa.util.onAnimationFrame
+import gg.essential.elementa.unstable.layoutdsl.*
+import gg.essential.elementa.unstable.state.v2.combinators.map
+import gg.essential.elementa.unstable.state.v2.memo
+import gg.essential.elementa.unstable.state.v2.mutableStateOf
+import gg.essential.elementa.unstable.state.v2.stateOf
+import gg.essential.elementa.unstable.state.v2.toV1
+import gg.essential.elementa.unstable.util.onAnimationFrame
 import gg.essential.installer.exitInstaller
 import gg.essential.installer.gui.*
 import gg.essential.installer.gui.component.*
@@ -155,6 +155,7 @@ object DebugPage : InstallerPage() {
                         InstallSteps.merge(
                             modloader.getInstallSteps(installInfo),
                             launcher.getNewInstallationInstallSteps(installInfo),
+                            ModManager.getInstallSteps(installInfo),
                         )
                     }
                 }

@@ -17,9 +17,9 @@ package gg.essential.installer.launcher.prism
 
 import com.sun.jna.platform.win32.Advapi32Util
 import com.sun.jna.platform.win32.WinReg
-import gg.essential.elementa.state.v2.ListState
-import gg.essential.elementa.state.v2.mutableListStateOf
-import gg.essential.elementa.state.v2.setAll
+import gg.essential.elementa.unstable.state.v2.memo
+import gg.essential.elementa.unstable.state.v2.mutableListStateOf
+import gg.essential.elementa.unstable.state.v2.setAll
 import gg.essential.installer.gui.InstallerPalette.MOD_ICON_PATH
 import gg.essential.installer.install.InstallSteps
 import gg.essential.installer.install.installationStep
@@ -74,24 +74,18 @@ class PrismLauncher(
     private var instancesFolder: Path = launcherPath / "instances" // default location
     private var iconsFolder: Path = launcherPath / "icons" // default location
 
-    override val installations: ListState<PrismInstallation>
-        get() = installationsMutable
-
-    override suspend fun loadInstallations() {
-        loadLauncherConfig()
+    override val installations = memo {
+        installationsMutable().also {
+            // Register observers for support state changes
+            for (installation in it) {
+                installation.isSupported()
+            }
+        }
     }
 
-    suspend fun loadLauncherConfig(): Boolean {
-        return withContext(Dispatchers.IO) {
-            val launcherConfigFile = launcherPath / "prismlauncher.cfg"
-            if (Files.notExists(launcherConfigFile)) {
-                logger.warn("Config file at $launcherConfigFile could not be found!");
-                return@withContext false
-            }
-            val map = readConfigFileToMap(launcherConfigFile)
-
-            instancesFolder = launcherPath / (map["InstanceDir"] ?: "instances")
-            iconsFolder = launcherPath / (map["IconsDir"] ?: "icons")
+    override suspend fun loadInstallations() {
+        withContext(Dispatchers.IO) {
+            loadLauncherConfig()
 
             val installations = Files.list(instancesFolder).collect(Collectors.toList()).mapNotNull { path ->
                 if (!path.isDirectorySafe()) return@mapNotNull null
@@ -120,9 +114,22 @@ class PrismLauncher(
                 }
             }
             installationsMutable.setAll(installations)
+        }
+    }
+
+    suspend fun loadLauncherConfig(): Boolean {
+        return withContext(Dispatchers.IO) {
+            val launcherConfigFile = launcherPath / "prismlauncher.cfg"
+            if (Files.notExists(launcherConfigFile)) {
+                logger.warn("Config file at $launcherConfigFile could not be found!");
+                return@withContext false
+            }
+            val map = readConfigFileToMap(launcherConfigFile)
+
+            instancesFolder = launcherPath / (map["InstanceDir"] ?: "instances")
+            iconsFolder = launcherPath / (map["IconsDir"] ?: "icons")
             return@withContext true
         }
-
     }
 
     override fun getNewGameDataFolder(name: String): Path {

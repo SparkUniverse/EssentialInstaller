@@ -16,6 +16,7 @@
 package gg.essential.installer.util
 
 import gg.essential.installer.download.HttpManager
+import gg.essential.installer.launchInMainCoroutineScope
 import gg.essential.installer.logging.Logging.logger
 import gg.essential.installer.metadata.MetadataManager
 import gg.essential.installer.platform.Platform
@@ -31,15 +32,23 @@ import kotlin.io.path.readBytes
 import kotlin.io.path.writeBytes
 
 object Fonts {
-    private val nvgContext = NvgContext()
+    private val nvgContext by lazy { NvgContext() }
 
-    val TITLE_FONT = NvgFontFace(nvgContext, Fonts::class.java.getResource("/fonts/TitleFont.ttf")!!.readBytes())
-    val GEIST_REGULAR = NvgFontFace(nvgContext, Fonts::class.java.getResource("/fonts/Geist-Regular.otf")!!.readBytes())
-    val GEIST_SEMIBOLD = NvgFontFace(nvgContext, Fonts::class.java.getResource("/fonts/Geist-SemiBold.otf")!!.readBytes())
+    val TITLE_FONT by lazy { NvgFontFace(nvgContext, Fonts::class.java.getResource("/fonts/TitleFont.ttf")!!.readBytes()) }
+    val GEIST_REGULAR by lazy { NvgFontFace(nvgContext, Fonts::class.java.getResource("/fonts/Geist-Regular.otf")!!.readBytes()) }
+    val GEIST_SEMIBOLD by lazy { NvgFontFace(nvgContext, Fonts::class.java.getResource("/fonts/Geist-SemiBold.otf")!!.readBytes()) }
+
+    fun initFonts() {
+        // Get the values to load them
+        nvgContext
+        TITLE_FONT
+        GEIST_REGULAR
+        GEIST_SEMIBOLD
+    }
 
     suspend fun loadFallback() {
         logger.info("Loading fallback font")
-        val font = try {
+        try {
             val bytes = withContext(Dispatchers.IO) {
                 val cachedFile = Platform.cacheFolder / "GoNotoCurrent-Regular.ttf"
                 logger.debug("Checking if cached font file {} exists", cachedFile)
@@ -56,13 +65,15 @@ object Fonts {
                     }
                 }
             }
-            NvgFontFace(nvgContext, bytes)
+            launchInMainCoroutineScope {
+                val font = NvgFontFace(nvgContext, bytes)
+                TITLE_FONT.addFallback(font)
+                GEIST_REGULAR.addFallback(font)
+                GEIST_SEMIBOLD.addFallback(font)
+            }
         } catch (e: Throwable) {
             logger.warn("Error when loading fallback font", e)
             return
         }
-        TITLE_FONT.addFallback(font)
-        GEIST_REGULAR.addFallback(font)
-        GEIST_SEMIBOLD.addFallback(font)
     }
 }

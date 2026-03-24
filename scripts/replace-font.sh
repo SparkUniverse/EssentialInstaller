@@ -1,8 +1,10 @@
+#!/bin/bash
+
 # Provided by CI
 #TITLE_FONT_BASE64="..."
 #TITLE_FONT_NAME="Name"
 
-set -e
+set -oe pipefail
 
 echo "Setting up font '$TITLE_FONT_NAME'"
 
