@@ -98,7 +98,7 @@ jobs:
           endpoint: https://neu.codesigning.azure.net/
           signing-account-name: essential
           certificate-profile-name: spark-universe
-          files: dist\installer-wrapper.exe
+          files: ${{ github.workspace }}\dist\installer-wrapper.exe
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
