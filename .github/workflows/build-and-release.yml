@@ -3,7 +3,7 @@ name: Build & Release
 on:
   push:
     tags:
-      - '*.*.*'
+      - "*.*.*"
 
 permissions:
   id-token: write
@@ -35,31 +35,31 @@ jobs:
           # create variables
           CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-      
+
           # import certificate from secret
           echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-      
+
           # create temporary keychain
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-      
+
           # import certificate to keychain
           security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
       - name: Sign the .app
         env:
-          IDENTITY: ${{ secrets.IDENTITY }}   # "identity"
-          USERNAME: ${{ secrets.USERNAME }}   # "apple-id email"
-          PASSWORD: ${{ secrets.PASSWORD }}   # "apple-id app specific password (go to https://appleid.apple.com./)"
-          TEAM_ID: ${{ secrets.TEAM_ID }}     # "developer team id"
-          VERSION: ${{ github.ref_name }}     # "1.0.0"
+          IDENTITY: ${{ secrets.IDENTITY }} # "identity"
+          USERNAME: ${{ secrets.USERNAME }} # "apple-id email"
+          PASSWORD: ${{ secrets.PASSWORD }} # "apple-id app specific password (go to https://appleid.apple.com./)"
+          TEAM_ID: ${{ secrets.TEAM_ID }} # "developer team id"
+          VERSION: ${{ github.ref_name }} # "1.0.0"
         run: |
           chmod +x ./sign-macos-app.sh
           ./sign-macos-app.sh
         working-directory: scripts
-      - name: 'Upload Signed App'
+      - name: "Upload Signed App"
         uses: actions/upload-artifact@v4
         with:
           name: macOS Installer
@@ -91,17 +91,16 @@ jobs:
           echo %cd%
         shell: cmd
         working-directory: dist
-
-      - name: Sign with Artifact Signing
-        uses: azure/artifact-signing-action@v1
+      - name: Sign Artifact with CodeSignTool
+        uses: sslcom/esigner-codesign@b7f8ff36fc0de8690fbbab8e5b4421d29802f747 # v1.3.2
         with:
-          endpoint: https://neu.codesigning.azure.net/
-          signing-account-name: essential
-          certificate-profile-name: spark-universe
-          files: ${{ github.workspace }}\dist\installer-wrapper.exe
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
+          command: sign
+          username: ${{secrets.ESSENTIAL_CODESIGN_USERNAME}}
+          password: ${{secrets.ESSENTIAL_CODESIGN_PASSWORD}}
+          credential_id: ${{secrets.ESSENTIAL_CODESIGN_CREDENTIAL_ID}}
+          totp_secret: ${{secrets.ESSENTIAL_CODESIGN_TOTP_SECRET}}
+          file_path: ${{ github.workspace }}\dist\installer-wrapper.exe
+          override: true
       - name: Rename executable
         env:
           VERSION: ${{ github.ref_name }}
@@ -112,7 +111,7 @@ jobs:
         shell: bash
         working-directory: dist
 
-      - name: 'Upload Signed Executable'
+      - name: "Upload Signed Executable"
         uses: actions/upload-artifact@v4
         with:
           name: Windows Installer
@@ -140,6 +139,3 @@ jobs:
           RELEASE_PASSWORD: ${{ secrets.RELEASE_PASSWORD }}
         run: ./upload-all.sh
         working-directory: scripts
-
-
-
