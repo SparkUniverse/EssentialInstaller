@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "gg.essential"
-version = "3.2.2"
+version = "3.2.3"
 
 repositories {
     mavenCentral()
