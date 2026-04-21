@@ -1,6 +1,6 @@
 [package]
 name = "installer-wrapper"
-version = "3.2.3" # Remember to change this in the macOS properties xml, until we do this automatically
+version = "3.2.4" # Remember to change this in the macOS properties xml, until we do this automatically
 edition = "2021"
 
 [dependencies]
