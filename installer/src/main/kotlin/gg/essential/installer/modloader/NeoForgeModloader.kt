@@ -103,7 +103,10 @@ object NeoForgeModloader : Modloader(ModloaderType.NEOFORGE) {
                 if (versionRaw.count { it == '.' } < 2) {
                     versionRaw = "1.$versionRaw" // Prefix 1. for versions < 26.x
                 }
-                versionRaw = "$versionRaw-${modloaderVersion.full.substringAfter('+', "")}"
+                val suffix = modloaderVersion.full.substringAfter('+', "")
+                if (suffix.isNotBlank()) {
+                    versionRaw = "$versionRaw-$suffix"
+                }
                 val mcVersion = MCVersion.fromString(versionRaw) ?: return@fold acc
                 val list = acc.getOrPut(mcVersion) { mutableListOf() }
                 list.add(modloaderVersion)
